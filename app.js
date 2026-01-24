@@ -387,6 +387,68 @@ const SIGN_REQUIREMENTS = {
   '10': { index_extended: true, middle_extended: true, ring_extended: true, pinky_extended: true, thumb_extended: true, min_openness: 0.32 }
 };
 
+// Extract concrete features from hand landmarks
+function extractConcreteFeaturesFromFrames(frames) {
+  if (frames.length === 0) return null;
+  
+  const stableFrames = frames.slice(Math.max(0, frames.length - 10));
+  let features = {
+    thumb_extended: 0,
+    index_extended: 0,
+    middle_extended: 0,
+    ring_extended: 0,
+    pinky_extended: 0,
+    fingers_together: 0,
+    fingers_spread: 0,
+    hand_openness: 0
+  };
+  
+  for (let frame of stableFrames) {
+    if (!frame || frame.length < 21) continue;
+    
+    const wrist = frame[0];
+    
+    // Calculate extension of each finger
+    const thumbDist = Math.sqrt((frame[4].x - wrist.x) ** 2 + (frame[4].y - wrist.y) ** 2);
+    const indexDist = Math.sqrt((frame[8].x - wrist.x) ** 2 + (frame[8].y - wrist.y) ** 2);
+    const middleDist = Math.sqrt((frame[12].x - wrist.x) ** 2 + (frame[12].y - wrist.y) ** 2);
+    const ringDist = Math.sqrt((frame[16].x - wrist.x) ** 2 + (frame[16].y - wrist.y) ** 2);
+    const pinkyDist = Math.sqrt((frame[20].x - wrist.x) ** 2 + (frame[20].y - wrist.y) ** 2);
+    
+    const avgDist = (thumbDist + indexDist + middleDist + ringDist + pinkyDist) / 5;
+    
+    // If finger is > 70% of average = extended
+    if (thumbDist > avgDist * 0.7) features.thumb_extended++;
+    if (indexDist > avgDist * 0.7) features.index_extended++;
+    if (middleDist > avgDist * 0.7) features.middle_extended++;
+    if (ringDist > avgDist * 0.7) features.ring_extended++;
+    if (pinkyDist > avgDist * 0.7) features.pinky_extended++;
+    
+    // Finger spread (distance between index and middle tips)
+    const indexMiddleDist = Math.sqrt((frame[8].x - frame[12].x) ** 2 + (frame[8].y - frame[12].y) ** 2);
+    if (indexMiddleDist > 0.12) features.fingers_spread++;
+    else features.fingers_together++;
+    
+    // Hand openness
+    features.hand_openness += avgDist;
+  }
+  
+  const numFrames = Math.max(1, stableFrames.length);
+  return {
+    thumb_extended: features.thumb_extended >= numFrames * 0.6,
+    index_extended: features.index_extended >= numFrames * 0.6,
+    middle_extended: features.middle_extended >= numFrames * 0.6,
+    ring_extended: features.ring_extended >= numFrames * 0.6,
+    pinky_extended: features.pinky_extended >= numFrames * 0.6,
+    fingers_spread: features.fingers_spread > numFrames * 0.5,
+    fingers_together: features.fingers_together > numFrames * 0.5,
+    hand_openness: features.hand_openness / numFrames,
+    is_open_hand: (features.hand_openness / numFrames) > 0.25,
+    is_closed_hand: (features.hand_openness / numFrames) <= 0.25,
+    frame_count: frames.length
+  };
+}
+
 // Score gesture by checking requirements
 function scoreGestureByRules(features, targetLabel) {
   const req = SIGN_REQUIREMENTS[targetLabel];
