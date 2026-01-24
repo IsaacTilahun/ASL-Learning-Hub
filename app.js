@@ -540,32 +540,34 @@ async function analyzeGestureWithLLM(recordedFrames, targetLabel) {
   
   if (!targetSign) return 0;
 
-  const prompt = `You are a strict ASL gesture expert. Compare recorded gesture features to target sign "${targetLabel}".
+  const prompt = `You are a lenient ASL gesture evaluator. Score how well the recorded gesture matches "${targetLabel}".
 
-TARGET: ${targetLabel}
+TARGET SIGN: ${targetLabel}
 DESCRIPTION: ${targetSign.description}
-REQUIRED: ${targetSign.hints.join(', ')}
+HINTS: ${targetSign.hints.join(', ')}
 
-RECORDED GESTURE (YES/NO):
-- Thumb Extended: ${features.thumb_extended ? 'YES' : 'NO'}
-- Index Extended: ${features.index_extended ? 'YES' : 'NO'}
-- Middle Extended: ${features.middle_extended ? 'YES' : 'NO'}
-- Ring Extended: ${features.ring_extended ? 'YES' : 'NO'}
-- Pinky Extended: ${features.pinky_extended ? 'YES' : 'NO'}
-- Fingers Spread: ${features.fingers_spread ? 'YES' : 'NO'}
-- Fingers Together: ${features.fingers_together ? 'YES' : 'NO'}
-- Hand Open: ${features.is_open_hand ? 'YES' : 'NO'}
-- Hand Closed: ${features.is_closed_hand ? 'YES' : 'NO'}
+RECORDED FEATURES:
+- Thumb: ${features.thumb_extended ? 'EXTENDED' : 'CURLED'}
+- Index: ${features.index_extended ? 'EXTENDED' : 'CURLED'}
+- Middle: ${features.middle_extended ? 'EXTENDED' : 'CURLED'}
+- Ring: ${features.ring_extended ? 'EXTENDED' : 'CURLED'}
+- Pinky: ${features.pinky_extended ? 'EXTENDED' : 'CURLED'}
+- Spread: ${features.fingers_spread ? 'YES' : 'NO'}
+- Together: ${features.fingers_together ? 'YES' : 'NO'}
+- Hand: ${features.is_open_hand ? 'OPEN' : 'CLOSED'}
 - Frames: ${features.frame_count}
 
-RULES:
-- If 0-2 features match requirement: score 10-30
-- If 3-4 features match: score 40-60
-- If 5+ features match: score 70-95
-- If all features match: score 95-100
+SCORING GUIDE (be generous):
+- Perfect match (8-9/9 features correct): 85-100
+- Very good (7/9 features correct): 75-85
+- Good (6/9 features correct): 65-75
+- OK (5/9 features correct): 50-65
+- Below average (4/9 features correct): 30-50
+- Poor (< 4 matches): 10-30
 
-RESPOND WITH ONLY JSON:
-{"accuracy": 75}`;
+Return ONLY valid JSON with one number:
+{"accuracy": 85}`;
+
 
   try {
     const response = await fetch('https://api.openai.com/v1/chat/completions', {
