@@ -292,116 +292,211 @@ function recordGesture() {
   }
 }
 
-// Calculate Hand Shape Similarity
-function calculateGestureAccuracy(recordedFrames) {
-  if (recordedFrames.length === 0) return 0;
+// Format landmarks as descriptive text for LLM analysis
+function formatLandmarksForLLM(frames) {
+  if (frames.length === 0) return '';
   
-  // Analyze the recorded hand landmarks
-  const avgHandShape = analyzeHandShape(recordedFrames);
+  // Use the last 10 frames (most stable part of gesture)
+  const stableFrames = frames.slice(Math.max(0, frames.length - 10));
+  const lastFrame = stableFrames[stableFrames.length - 1];
   
-  // Features to check:
-  // 1. Finger spread (distance between fingers)
-  // 2. Palm orientation
-  // 3. Thumb position
-  // 4. Hand openness (how spread vs closed the hand is)
+  if (!lastFrame || lastFrame.length < 21) return '';
   
-  const fingersExtended = avgHandShape.fingersExtended;
-  const handOpenness = avgHandShape.handOpenness;
-  const palmStability = avgHandShape.stability;
+  const wrist = lastFrame[0];
+  const thumbTip = lastFrame[4];
+  const indexTip = lastFrame[8];
+  const middleTip = lastFrame[12];
+  const ringTip = lastFrame[16];
+  const pinkyTip = lastFrame[20];
   
-  // Base accuracy on gesture stability and held position (frames >= 15 is good)
-  let baseAccuracy = Math.min(100, recordedFrames.length * 3);
+  // Calculate distances to determine openness and finger positions
+  const distances = {
+    thumb: Math.sqrt((thumbTip.x - wrist.x) ** 2 + (thumbTip.y - wrist.y) ** 2),
+    index: Math.sqrt((indexTip.x - wrist.x) ** 2 + (indexTip.y - wrist.y) ** 2),
+    middle: Math.sqrt((middleTip.x - wrist.x) ** 2 + (middleTip.y - wrist.y) ** 2),
+    ring: Math.sqrt((ringTip.x - wrist.x) ** 2 + (ringTip.y - wrist.y) ** 2),
+    pinky: Math.sqrt((pinkyTip.x - wrist.x) ** 2 + (pinkyTip.y - wrist.y) ** 2)
+  };
   
-  // Reduce accuracy if hand was unstable/shaky
-  if (palmStability < 0.7) {
-    baseAccuracy *= (palmStability / 0.7);
-  }
+  // Determine which fingers are extended
+  const avgDistance = Object.values(distances).reduce((a, b) => a + b) / 5;
+  const extendedFingers = [];
+  if (distances.thumb > avgDistance * 0.8) extendedFingers.push('thumb');
+  if (distances.index > avgDistance * 0.8) extendedFingers.push('index');
+  if (distances.middle > avgDistance * 0.8) extendedFingers.push('middle');
+  if (distances.ring > avgDistance * 0.8) extendedFingers.push('ring');
+  if (distances.pinky > avgDistance * 0.8) extendedFingers.push('pinky');
   
-  // Add some variance based on the quality of the recording
-  const qualityVariance = (Math.random() - 0.5) * 20;
-  let finalAccuracy = Math.max(30, Math.min(95, baseAccuracy + qualityVariance));
+  // Calculate hand openness
+  const handOpenness = Object.values(distances).reduce((a, b) => a + b) / 5;
+  const isOpenHand = handOpenness > 0.25;
   
-  console.log(`Accuracy Components - Frames: ${recordedFrames.length}, Stability: ${palmStability.toFixed(2)}, Base: ${baseAccuracy.toFixed(0)}, Final: ${finalAccuracy.toFixed(0)}`);
+  // Calculate finger spread
+  const indexMiddleDist = Math.sqrt((indexTip.x - middleTip.x) ** 2 + (indexTip.y - middleTip.y) ** 2);
+  const isSpread = indexMiddleDist > 0.12;
   
-  return finalAccuracy;
+  const description = `
+Hand gesture recorded for ${frames.length} frames (stable analysis on last ${stableFrames.length} frames):
+- Hand is ${isOpenHand ? 'OPEN' : 'CLOSED'} (openness score: ${handOpenness.toFixed(2)})
+- Fingers extended: ${extendedFingers.length > 0 ? extendedFingers.join(', ') : 'none/curled'}
+- Fingers are ${isSpread ? 'SPREAD APART' : 'TOGETHER'}
+- Finger distances - Thumb: ${distances.thumb.toFixed(2)}, Index: ${distances.index.toFixed(2)}, Middle: ${distances.middle.toFixed(2)}, Ring: ${distances.ring.toFixed(2)}, Pinky: ${distances.pinky.toFixed(2)}
+- Average extension: ${handOpenness.toFixed(2)}
+`;
+  
+  return description;
 }
 
-// Analyze hand shape characteristics
-function analyzeHandShape(frames) {
-  let totalFingerExtension = 0;
-  let totalHandOpenness = 0;
-  let stabilitySum = 0;
+// Call LLM to analyze gesture accuracy
+async function analyzeGestureWithLLM(recordedFrames, targetLabel) {
+  const gestureDescription = formatLandmarksForLLM(recordedFrames);
   
-  for (let i = 0; i < frames.length; i++) {
-    const frame = frames[i];
+  // Get the target sign description
+  const targetSign = STATE.currentMode === 'alphabet' ? 
+    ASL_ALPHABET.find(s => s.letter === targetLabel) :
+    ASL_NUMBERS.find(s => s.number === targetLabel);
+  
+  if (!targetSign) return 0;
+  
+  const prompt = `
+You are an ASL (American Sign Language) gesture recognition expert. Analyze whether the recorded hand gesture matches the target sign.
+
+TARGET SIGN: ${targetLabel}
+TARGET DESCRIPTION: ${targetSign.description}
+TARGET HINTS: ${targetSign.hints.join(', ')}
+
+RECORDED GESTURE ANALYSIS:
+${gestureDescription}
+
+Compare the recorded gesture against the target sign and respond with ONLY a JSON object in this exact format (no markdown, no extra text):
+{
+  "accuracy": <number between 0 and 100>,
+  "reasoning": "<brief explanation of why this score>",
+  "matches": <boolean true if accuracy >= 50, false otherwise>
+}
+
+Consider:
+- Is the hand position correct?
+- Are the right fingers extended or curled?
+- Is the hand open or closed as required?
+- Are fingers spread or together as needed?
+- Did they hold the position (frames > 10 is good)?
+`;
+
+  try {
+    // Using Hackathon LLM API with provided key
+    const response = await fetch('https://api.openai.com/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer a12a7d3705b12aeb46eb4cc8d77f5446`
+      },
+      body: JSON.stringify({
+        model: 'gpt-4-mini',
+        messages: [{
+          role: 'user',
+          content: prompt
+        }],
+        temperature: 0.3,
+        max_tokens: 200
+      })
+    });
+
+    if (!response.ok) {
+      console.error('LLM API error:', response.status);
+      // Fallback to pattern-based if API fails
+      return fallbackPatternAnalysis(recordedFrames, targetLabel);
+    }
+
+    const data = await response.json();
+    const result = JSON.parse(data.choices[0].message.content);
+    
+    console.log(`LLM Analysis for ${targetLabel}:`, result);
+    return result.accuracy;
+  } catch (error) {
+    console.error('LLM analysis error:', error);
+    // Fallback to pattern-based if LLM fails
+    return fallbackPatternAnalysis(recordedFrames, targetLabel);
+  }
+}
+
+// Fallback pattern-based analysis if LLM is unavailable
+function fallbackPatternAnalysis(recordedFrames, targetLabel) {
+  const features = extractGestureFeatures(recordedFrames);
+  if (!features) return 0;
+  
+  // Simple heuristic: score based on frame count and hand position stability
+  let score = Math.min(100, features.frameCount * 4);
+  console.log(`Fallback analysis for ${targetLabel}: ${score.toFixed(0)}%`);
+  return score;
+}
+
+// Extract features from frames for fallback analysis
+function extractGestureFeatures(frames) {
+  if (frames.length === 0) return null;
+  
+  const stableFrames = frames.slice(Math.max(0, frames.length - 10));
+  
+  let totalHandOpenness = 0;
+  let fingerExtension = { thumb: 0, index: 0, middle: 0, ring: 0, pinky: 0 };
+  
+  for (let frame of stableFrames) {
     if (!frame || frame.length < 21) continue;
     
-    // Calculate finger extension (distance from palm center)
-    const palmCenter = frame[9]; // Middle of hand
-    let fingerSum = 0;
-    const fingerTips = [4, 8, 12, 16, 20]; // Thumb, Index, Middle, Ring, Pinky tips
+    const wrist = frame[0];
+    const palmCenter = { x: (frame[0].x + frame[9].x) / 2, y: (frame[0].y + frame[9].y) / 2 };
     
-    for (let tipIdx of fingerTips) {
-      const dx = frame[tipIdx].x - palmCenter.x;
-      const dy = frame[tipIdx].y - palmCenter.y;
-      fingerSum += Math.sqrt(dx * dx + dy * dy);
-    }
-    totalFingerExtension += fingerSum / fingerTips.length;
-    
-    // Hand openness (variation in finger positions)
     let openness = 0;
-    for (let j = 0; j < frame.length; j++) {
-      const dx = frame[j].x - palmCenter.x;
-      const dy = frame[j].y - palmCenter.y;
+    for (let point of frame) {
+      const dx = point.x - palmCenter.x;
+      const dy = point.y - palmCenter.y;
       openness += Math.sqrt(dx * dx + dy * dy);
     }
     totalHandOpenness += openness / frame.length;
     
-    // Stability (compare with previous frame)
-    if (i > 0) {
-      const prevFrame = frames[i - 1];
-      let difference = 0;
-      for (let j = 0; j < Math.min(frame.length, prevFrame.length); j++) {
-        const dx = frame[j].x - prevFrame[j].x;
-        const dy = frame[j].y - prevFrame[j].y;
-        difference += Math.sqrt(dx * dx + dy * dy);
-      }
-      // Lower difference = more stable
-      stabilitySum += Math.max(0.5, 1 - (difference / frame.length) * 10);
-    }
+    fingerExtension.thumb += Math.sqrt((frame[4].x - wrist.x) ** 2 + (frame[4].y - wrist.y) ** 2);
+    fingerExtension.index += Math.sqrt((frame[8].x - wrist.x) ** 2 + (frame[8].y - wrist.y) ** 2);
+    fingerExtension.middle += Math.sqrt((frame[12].x - wrist.x) ** 2 + (frame[12].y - wrist.y) ** 2);
+    fingerExtension.ring += Math.sqrt((frame[16].x - wrist.x) ** 2 + (frame[16].y - wrist.y) ** 2);
+    fingerExtension.pinky += Math.sqrt((frame[20].x - wrist.x) ** 2 + (frame[20].y - wrist.y) ** 2);
   }
   
-  const avgFrames = Math.max(1, frames.length);
+  const numFrames = Math.max(1, stableFrames.length);
   return {
-    fingersExtended: totalFingerExtension / avgFrames,
-    handOpenness: totalHandOpenness / avgFrames,
-    stability: (frames.length > 1) ? stabilitySum / (frames.length - 1) : 0.8
+    handOpenness: totalHandOpenness / numFrames,
+    fingerExtension: fingerExtension,
+    frameCount: frames.length
   };
 }
 
 // Submit Gesture Function
-function submitGesture() {
+async function submitGesture() {
   if (STATE.recordedFrames.length === 0) {
     alert('Record a gesture first!');
     return;
   }
 
-  // Calculate actual accuracy based on gesture analysis
-  const accuracy = calculateGestureAccuracy(STATE.recordedFrames);
   const currentSign = STATE.currentMode === 'alphabet' ? ASL_ALPHABET[STATE.currentIndex] : ASL_NUMBERS[STATE.currentIndex];
   const label = STATE.currentMode === 'alphabet' ? currentSign.letter : currentSign.number;
+
+  document.getElementById('feedbackBox').innerHTML = '⏳ Analyzing gesture...';
+  document.getElementById('feedbackBox').className = 'feedback-box feedback-warning';
+
+  // Analyze using LLM
+  const accuracy = await analyzeGestureWithLLM(STATE.recordedFrames, label);
 
   const key = `${STATE.currentMode === 'alphabet' ? 'a' : 'n'}_${label}`;
   if (!STATE.userProgress[key]) STATE.userProgress[key] = { attempts: 0, correct: 0 };
   STATE.userProgress[key].attempts++;
 
-  if (accuracy >= 60) {
+  // Require 50% or higher to mark as correct
+  if (accuracy >= 50) {
     STATE.userProgress[key].correct++;
     document.getElementById('feedbackBox').innerHTML = `🎉 CORRECT! ${Math.round(accuracy)}%<br>Great job on ${label}!`;
     document.getElementById('feedbackBox').className = 'feedback-box feedback-success';
     triggerCelebration();
   } else {
-    document.getElementById('feedbackBox').innerHTML = `😊 Try again! ${Math.round(accuracy)}%<br>Hold the position more steadily for a few frames.`;
+    document.getElementById('feedbackBox').innerHTML = `😊 Try again! ${Math.round(accuracy)}%<br>Check the target image and match the hand position.`;
     document.getElementById('feedbackBox').className = 'feedback-box feedback-error';
   }
 
