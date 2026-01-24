@@ -347,110 +347,135 @@ Hand gesture recorded for ${frames.length} frames (stable analysis on last ${sta
   return description;
 }
 
+// Define exact requirements for each sign
+const SIGN_REQUIREMENTS = {
+  'A': { thumb_extended: true, index_extended: false, middle_extended: false, ring_extended: false, pinky_extended: false, max_openness: 0.20 },
+  'B': { thumb_extended: false, index_extended: true, middle_extended: true, ring_extended: true, pinky_extended: true, min_openness: 0.30, fingers_spread: true },
+  'C': { thumb_extended: true, index_extended: true, middle_extended: true, ring_extended: true, pinky_extended: true, min_openness: 0.25, fingers_spread: true },
+  'D': { index_extended: true, middle_extended: false, ring_extended: false, pinky_extended: false, thumb_extended: false, max_openness: 0.22 },
+  'E': { thumb_extended: false, index_extended: false, middle_extended: false, ring_extended: false, pinky_extended: false, max_openness: 0.18 },
+  'F': { thumb_extended: true, index_extended: true, middle_extended: true, ring_extended: true, pinky_extended: true, max_openness: 0.15 },
+  'G': { index_extended: true, middle_extended: false, ring_extended: false, pinky_extended: false, thumb_extended: true, max_openness: 0.22 },
+  'H': { index_extended: true, middle_extended: true, ring_extended: false, pinky_extended: false, thumb_extended: false, max_openness: 0.22 },
+  'I': { pinky_extended: true, index_extended: false, middle_extended: false, ring_extended: false, thumb_extended: false, max_openness: 0.20 },
+  'J': { pinky_extended: true, index_extended: false, middle_extended: false, ring_extended: false, thumb_extended: false, max_openness: 0.20 },
+  'K': { index_extended: true, middle_extended: true, ring_extended: false, pinky_extended: false, thumb_extended: true, fingers_spread: true },
+  'L': { thumb_extended: true, index_extended: true, middle_extended: false, ring_extended: false, pinky_extended: false },
+  'M': { index_extended: false, middle_extended: false, ring_extended: false, pinky_extended: false, thumb_extended: false, max_openness: 0.18 },
+  'N': { index_extended: false, middle_extended: false, ring_extended: false, pinky_extended: false, thumb_extended: false, max_openness: 0.18 },
+  'O': { thumb_extended: false, index_extended: false, middle_extended: false, ring_extended: false, pinky_extended: false, fingers_together: true, max_openness: 0.10 },
+  'P': { index_extended: true, middle_extended: true, ring_extended: false, pinky_extended: false, thumb_extended: true, max_openness: 0.22 },
+  'Q': { index_extended: true, middle_extended: true, ring_extended: false, pinky_extended: false, thumb_extended: true },
+  'R': { index_extended: true, middle_extended: true, ring_extended: false, pinky_extended: false, thumb_extended: false, fingers_spread: true },
+  'S': { thumb_extended: true, index_extended: false, middle_extended: false, ring_extended: false, pinky_extended: false, max_openness: 0.18 },
+  'T': { thumb_extended: true, index_extended: false, middle_extended: false, ring_extended: false, pinky_extended: false, max_openness: 0.18 },
+  'U': { index_extended: true, middle_extended: true, ring_extended: false, pinky_extended: false, thumb_extended: false, fingers_spread: false },
+  'V': { index_extended: true, middle_extended: true, ring_extended: false, pinky_extended: false, thumb_extended: false, fingers_spread: true, min_openness: 0.25 },
+  'W': { index_extended: true, middle_extended: true, ring_extended: true, pinky_extended: false, thumb_extended: false, fingers_spread: true },
+  'X': { index_extended: true, middle_extended: true, ring_extended: false, pinky_extended: false, thumb_extended: false },
+  'Y': { thumb_extended: true, pinky_extended: true, index_extended: false, middle_extended: false, ring_extended: false },
+  'Z': { index_extended: true, middle_extended: false, ring_extended: false, pinky_extended: false, thumb_extended: false },
+  '1': { index_extended: true, middle_extended: false, ring_extended: false, pinky_extended: false, thumb_extended: false, max_openness: 0.20 },
+  '2': { index_extended: true, middle_extended: true, ring_extended: false, pinky_extended: false, thumb_extended: false, fingers_spread: true },
+  '3': { index_extended: true, middle_extended: true, ring_extended: true, pinky_extended: false, thumb_extended: true },
+  '4': { index_extended: true, middle_extended: true, ring_extended: true, pinky_extended: true, thumb_extended: false, min_openness: 0.28 },
+  '5': { index_extended: true, middle_extended: true, ring_extended: true, pinky_extended: true, thumb_extended: true, min_openness: 0.32 },
+  '6': { index_extended: false, middle_extended: false, ring_extended: false, pinky_extended: false, thumb_extended: true, max_openness: 0.20 },
+  '7': { index_extended: true, middle_extended: false, ring_extended: false, pinky_extended: false, thumb_extended: true },
+  '8': { index_extended: false, middle_extended: false, ring_extended: false, pinky_extended: false, thumb_extended: false, max_openness: 0.18 },
+  '9': { pinky_extended: true, index_extended: false, middle_extended: false, ring_extended: false, thumb_extended: true },
+  '10': { index_extended: true, middle_extended: true, ring_extended: true, pinky_extended: true, thumb_extended: true, min_openness: 0.32 }
+};
+
+// Score gesture by checking requirements
+function scoreGestureByRules(features, targetLabel) {
+  const req = SIGN_REQUIREMENTS[targetLabel];
+  if (!req) return 50; // Unknown sign
+  
+  let matchCount = 0;
+  let totalChecks = 0;
+  
+  // Check each requirement
+  if (req.thumb_extended !== undefined) {
+    totalChecks++;
+    if (features.thumb_extended === req.thumb_extended) matchCount++;
+    else console.log(`❌ Thumb mismatch: need ${req.thumb_extended}, got ${features.thumb_extended}`);
+  }
+  
+  if (req.index_extended !== undefined) {
+    totalChecks++;
+    if (features.index_extended === req.index_extended) matchCount++;
+    else console.log(`❌ Index mismatch: need ${req.index_extended}, got ${features.index_extended}`);
+  }
+  
+  if (req.middle_extended !== undefined) {
+    totalChecks++;
+    if (features.middle_extended === req.middle_extended) matchCount++;
+    else console.log(`❌ Middle mismatch: need ${req.middle_extended}, got ${features.middle_extended}`);
+  }
+  
+  if (req.ring_extended !== undefined) {
+    totalChecks++;
+    if (features.ring_extended === req.ring_extended) matchCount++;
+    else console.log(`❌ Ring mismatch: need ${req.ring_extended}, got ${features.ring_extended}`);
+  }
+  
+  if (req.pinky_extended !== undefined) {
+    totalChecks++;
+    if (features.pinky_extended === req.pinky_extended) matchCount++;
+    else console.log(`❌ Pinky mismatch: need ${req.pinky_extended}, got ${features.pinky_extended}`);
+  }
+  
+  if (req.max_openness !== undefined) {
+    totalChecks++;
+    if (features.hand_openness <= req.max_openness) matchCount++;
+    else console.log(`❌ Hand too open: ${features.hand_openness.toFixed(2)} > ${req.max_openness}`);
+  }
+  
+  if (req.min_openness !== undefined) {
+    totalChecks++;
+    if (features.hand_openness >= req.min_openness) matchCount++;
+    else console.log(`❌ Hand too closed: ${features.hand_openness.toFixed(2)} < ${req.min_openness}`);
+  }
+  
+  if (req.fingers_spread !== undefined) {
+    totalChecks++;
+    if (features.fingers_spread === req.fingers_spread) matchCount++;
+    else console.log(`❌ Finger spread mismatch: need ${req.fingers_spread}, got ${features.fingers_spread}`);
+  }
+  
+  if (req.fingers_together !== undefined) {
+    totalChecks++;
+    if (features.fingers_together === req.fingers_together) matchCount++;
+    else console.log(`❌ Fingers together mismatch: need ${req.fingers_together}, got ${features.fingers_together}`);
+  }
+  
+  // Calculate accuracy
+  if (totalChecks === 0) return 50;
+  const percentMatch = (matchCount / totalChecks) * 100;
+  
+  console.log(`✓ ${targetLabel}: ${matchCount}/${totalChecks} requirements matched = ${percentMatch.toFixed(0)}%`);
+  
+  // Convert percentage to accuracy score
+  if (percentMatch >= 80) return 80 + (percentMatch - 80);
+  else if (percentMatch >= 60) return 50 + (percentMatch - 60);
+  else if (percentMatch >= 40) return 30 + (percentMatch - 40);
+  else return Math.max(10, percentMatch / 2);
+}
+
 // Call LLM to analyze gesture accuracy
 async function analyzeGestureWithLLM(recordedFrames, targetLabel) {
-  const gestureDescription = formatLandmarksForLLM(recordedFrames);
+  // Extract concrete yes/no features
+  const features = extractConcreteFeaturesFromFrames(recordedFrames);
+  if (!features) return 0;
   
-  // Get the target sign description
-  const targetSign = STATE.currentMode === 'alphabet' ? 
-    ASL_ALPHABET.find(s => s.letter === targetLabel) :
-    ASL_NUMBERS.find(s => s.number === targetLabel);
+  console.log('📊 Extracted features:', features);
   
-  if (!targetSign) return 0;
+  // Score using deterministic rules (NOT LLM)
+  const score = scoreGestureByRules(features, targetLabel);
   
-  const prompt = `You are STRICT ASL gesture recognition expert. Your job is to REJECT wrong gestures.
-
-TARGET SIGN TO MATCH: "${targetLabel}"
-REQUIRED: ${targetSign.description}
-TIPS: ${targetSign.hints.join(', ')}
-
-ACTUAL GESTURE RECORDED:
-${gestureDescription}
-
-SCORING RULES (BE STRICT):
-- Score 95-100: Perfect match, all hand features correct
-- Score 70-90: Good match, minor imperfections
-- Score 50-69: Partial match, some features wrong
-- Score 20-49: WRONG gesture, doesn't match target
-- Score 0-19: Completely wrong
-
-RESPOND WITH EXACTLY THIS JSON (no markdown, no extra text):
-{"accuracy": 75}
-
-Replace 75 with your score. NOTHING ELSE. No reasoning, no quotes, just the number in JSON format.
-
-If the recorded gesture does NOT match "${targetLabel}", score it LOW (0-49).
-If it DOES match "${targetLabel}", score it HIGH (70-100).`;
-
-  try {
-    const response = await fetch('https://api.openai.com/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer a12a7d3705b12aeb46eb4cc8d77f5446`
-      },
-      body: JSON.stringify({
-        model: 'deepseekv32',
-        messages: [{
-          role: 'user',
-          content: prompt
-        }],
-        temperature: 0.1,
-        max_tokens: 50
-      })
-    });
-
-    if (!response.ok) {
-      console.error('LLM API error:', response.status, response.statusText);
-      return fallbackPatternAnalysis(recordedFrames, targetLabel);
-    }
-
-    const data = await response.json();
-    console.log('Raw API response:', data);
-    
-    if (!data.choices || !data.choices[0]) {
-      console.error('No response from LLM:', data);
-      return fallbackPatternAnalysis(recordedFrames, targetLabel);
-    }
-
-    let responseText = data.choices[0].message.content.trim();
-    console.log('LLM response text:', responseText);
-    
-    // Extract number from various possible formats
-    let accuracy = null;
-    
-    // Try to parse as JSON first
-    try {
-      const jsonMatch = responseText.match(/\{.*?\}/s);
-      if (jsonMatch) {
-        const parsed = JSON.parse(jsonMatch[0]);
-        if (typeof parsed.accuracy === 'number') {
-          accuracy = parsed.accuracy;
-        }
-      }
-    } catch (e) {
-      console.log('JSON parse attempt failed, trying regex...');
-    }
-    
-    // If JSON didn't work, extract number directly
-    if (accuracy === null) {
-      const numberMatch = responseText.match(/\d+/);
-      if (numberMatch) {
-        accuracy = parseInt(numberMatch[0]);
-      }
-    }
-    
-    if (accuracy !== null && accuracy >= 0 && accuracy <= 100) {
-      console.log(`✓ Final accuracy for ${targetLabel}: ${accuracy}%`);
-      return accuracy;
-    } else {
-      console.error('Could not extract valid accuracy from response:', responseText);
-      return fallbackPatternAnalysis(recordedFrames, targetLabel);
-    }
-  } catch (error) {
-    console.error('LLM analysis error:', error);
-    return fallbackPatternAnalysis(recordedFrames, targetLabel);
-  }
+  console.log(`✅ Final score for ${targetLabel}: ${score.toFixed(0)}%`);
+  return score;
 }
 
 // Fallback pattern-based analysis if LLM is unavailable
