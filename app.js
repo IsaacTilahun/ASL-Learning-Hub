@@ -491,3 +491,46 @@ function triggerCelebration() {
   }
   setTimeout(() => celebration.classList.add('hidden'), 2000);
 }
+
+// Show About Modal
+function showAbout() {
+  const modal = document.getElementById('progressModal');
+  modal.classList.remove('hidden');
+  
+  const modalContent = modal.querySelector('.modal-content');
+  modalContent.innerHTML = `
+    <button class="close-btn" onclick="document.getElementById('progressModal').classList.add('hidden')">&times;</button>
+    <h2>About ASL Learning Hub</h2>
+    
+    <div style="margin: 2rem 0; line-height: 1.8;">
+      <h3 style="color: var(--primary-color); margin-bottom: 1rem; font-size: 1.3rem;">Interactive Learning Platform</h3>
+      <p style="margin-bottom: 1rem;">An AI-powered web application designed to help you master American Sign Language (ASL) alphabet and numbers with real-time hand tracking and intelligent feedback.</p>
+      
+      <h3 style="color: var(--primary-color); margin-bottom: 1rem; font-size: 1.3rem; margin-top: 1.5rem;">Key Features</h3>
+      <ul style="margin-left: 1.5rem; margin-bottom: 1rem;">
+        <li>✨ Real-time hand tracking with MediaPipe</li>
+        <li>✨ AI-based gesture recognition with accuracy scoring</li>
+        <li>✨ Confidence meter for hand detection quality</li>
+        <li>✨ Progress tracking and achievement system</li>
+        <li>✨ Beautiful, responsive design with animations</li>
+        <li>✨ Local storage persistence for your progress</li>
+      </ul>
+      
+      <h3 style="color: var(--primary-color); margin-bottom: 1rem; font-size: 1.3rem; margin-top: 1.5rem;">Learning Modes</h3>
+      <ul style="margin-left: 1.5rem; margin-bottom: 1rem;">
+        <li><strong>Alphabet (A-Z):</strong> Learn all 26 letters of the ASL alphabet</li>
+        <li><strong>Numbers (1-10):</strong> Learn numbers from 1 to 10</li>
+        <li><strong>Progress Tracker:</strong> View your statistics and achievements</li>
+      </ul>
+      
+      <h3 style="color: var(--primary-color); margin-bottom: 1rem; font-size: 1.3rem; margin-top: 1.5rem;">How to Get Started</h3>
+      <ol style="margin-left: 1.5rem;">
+        <li>Choose a learning mode (Alphabet or Numbers)</li>
+        <li>Position your hand in front of the camera</li>
+        <li>Record your gesture and get instant feedback</li>
+        <li>Track your progress and earn achievements</li>
+      </ol>
+    </div>
+  `;
+}
+
