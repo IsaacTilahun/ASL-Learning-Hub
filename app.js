@@ -358,33 +358,31 @@ async function analyzeGestureWithLLM(recordedFrames, targetLabel) {
   
   if (!targetSign) return 0;
   
-  const prompt = `
-You are an ASL (American Sign Language) gesture recognition expert. Analyze whether the recorded hand gesture matches the target sign.
+  const prompt = `You are STRICT ASL gesture recognition expert. Your job is to REJECT wrong gestures.
 
-TARGET SIGN: ${targetLabel}
-TARGET DESCRIPTION: ${targetSign.description}
-TARGET HINTS: ${targetSign.hints.join(', ')}
+TARGET SIGN TO MATCH: "${targetLabel}"
+REQUIRED: ${targetSign.description}
+TIPS: ${targetSign.hints.join(', ')}
 
-RECORDED GESTURE ANALYSIS:
+ACTUAL GESTURE RECORDED:
 ${gestureDescription}
 
-Compare the recorded gesture against the target sign and respond with ONLY a JSON object in this exact format (no markdown, no extra text):
-{
-  "accuracy": <number between 0 and 100>,
-  "reasoning": "<brief explanation of why this score>",
-  "matches": <boolean true if accuracy >= 50, false otherwise>
-}
+SCORING RULES (BE STRICT):
+- Score 95-100: Perfect match, all hand features correct
+- Score 70-90: Good match, minor imperfections
+- Score 50-69: Partial match, some features wrong
+- Score 20-49: WRONG gesture, doesn't match target
+- Score 0-19: Completely wrong
 
-Consider:
-- Is the hand position correct?
-- Are the right fingers extended or curled?
-- Is the hand open or closed as required?
-- Are fingers spread or together as needed?
-- Did they hold the position (frames > 10 is good)?
-`;
+RESPOND WITH EXACTLY THIS JSON (no markdown, no extra text):
+{"accuracy": 75}
+
+Replace 75 with your score. NOTHING ELSE. No reasoning, no quotes, just the number in JSON format.
+
+If the recorded gesture does NOT match "${targetLabel}", score it LOW (0-49).
+If it DOES match "${targetLabel}", score it HIGH (70-100).`;
 
   try {
-    // Using Hackathon LLM API with provided key
     const response = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
       headers: {
@@ -392,30 +390,65 @@ Consider:
         'Authorization': `Bearer a12a7d3705b12aeb46eb4cc8d77f5446`
       },
       body: JSON.stringify({
-        model: 'gpt-4-mini',
+        model: 'deepseekv32',
         messages: [{
           role: 'user',
           content: prompt
         }],
-        temperature: 0.3,
-        max_tokens: 200
+        temperature: 0.1,
+        max_tokens: 50
       })
     });
 
     if (!response.ok) {
-      console.error('LLM API error:', response.status);
-      // Fallback to pattern-based if API fails
+      console.error('LLM API error:', response.status, response.statusText);
       return fallbackPatternAnalysis(recordedFrames, targetLabel);
     }
 
     const data = await response.json();
-    const result = JSON.parse(data.choices[0].message.content);
+    console.log('Raw API response:', data);
     
-    console.log(`LLM Analysis for ${targetLabel}:`, result);
-    return result.accuracy;
+    if (!data.choices || !data.choices[0]) {
+      console.error('No response from LLM:', data);
+      return fallbackPatternAnalysis(recordedFrames, targetLabel);
+    }
+
+    let responseText = data.choices[0].message.content.trim();
+    console.log('LLM response text:', responseText);
+    
+    // Extract number from various possible formats
+    let accuracy = null;
+    
+    // Try to parse as JSON first
+    try {
+      const jsonMatch = responseText.match(/\{.*?\}/s);
+      if (jsonMatch) {
+        const parsed = JSON.parse(jsonMatch[0]);
+        if (typeof parsed.accuracy === 'number') {
+          accuracy = parsed.accuracy;
+        }
+      }
+    } catch (e) {
+      console.log('JSON parse attempt failed, trying regex...');
+    }
+    
+    // If JSON didn't work, extract number directly
+    if (accuracy === null) {
+      const numberMatch = responseText.match(/\d+/);
+      if (numberMatch) {
+        accuracy = parseInt(numberMatch[0]);
+      }
+    }
+    
+    if (accuracy !== null && accuracy >= 0 && accuracy <= 100) {
+      console.log(`✓ Final accuracy for ${targetLabel}: ${accuracy}%`);
+      return accuracy;
+    } else {
+      console.error('Could not extract valid accuracy from response:', responseText);
+      return fallbackPatternAnalysis(recordedFrames, targetLabel);
+    }
   } catch (error) {
     console.error('LLM analysis error:', error);
-    // Fallback to pattern-based if LLM fails
     return fallbackPatternAnalysis(recordedFrames, targetLabel);
   }
 }
