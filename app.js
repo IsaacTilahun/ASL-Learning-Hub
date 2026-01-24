@@ -533,96 +533,11 @@ async function analyzeGestureWithLLM(recordedFrames, targetLabel) {
   
   console.log('📊 Extracted features:', features);
   
-  // Get the target sign description
-  const targetSign = STATE.currentMode === 'alphabet' ? 
-    ASL_ALPHABET.find(s => s.letter === targetLabel) :
-    ASL_NUMBERS.find(s => s.number === targetLabel);
+  // Score using deterministic rules (NOT LLM)
+  const score = scoreGestureByRules(features, targetLabel);
   
-  if (!targetSign) return 0;
-
-  const prompt = `You are a lenient ASL gesture evaluator. Score how well the recorded gesture matches "${targetLabel}".
-
-TARGET SIGN: ${targetLabel}
-DESCRIPTION: ${targetSign.description}
-HINTS: ${targetSign.hints.join(', ')}
-
-RECORDED FEATURES:
-- Thumb: ${features.thumb_extended ? 'EXTENDED' : 'CURLED'}
-- Index: ${features.index_extended ? 'EXTENDED' : 'CURLED'}
-- Middle: ${features.middle_extended ? 'EXTENDED' : 'CURLED'}
-- Ring: ${features.ring_extended ? 'EXTENDED' : 'CURLED'}
-- Pinky: ${features.pinky_extended ? 'EXTENDED' : 'CURLED'}
-- Spread: ${features.fingers_spread ? 'YES' : 'NO'}
-- Together: ${features.fingers_together ? 'YES' : 'NO'}
-- Hand: ${features.is_open_hand ? 'OPEN' : 'CLOSED'}
-- Frames: ${features.frame_count}
-
-SCORING GUIDE (be generous):
-- Perfect match (8-9/9 features correct): 85-100
-- Very good (7/9 features correct): 75-85
-- Good (6/9 features correct): 65-75
-- OK (5/9 features correct): 50-65
-- Below average (4/9 features correct): 30-50
-- Poor (< 4 matches): 10-30
-
-Return ONLY valid JSON with one number:
-{"accuracy": 85}`;
-
-
-  try {
-    const response = await fetch('https://api.openai.com/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer a12a7d3705b12aeb46eb4cc8d77f5446`
-      },
-      body: JSON.stringify({
-        model: 'deepseekv32',
-        messages: [{
-          role: 'user',
-          content: prompt
-        }],
-        temperature: 0.0,
-        max_tokens: 30
-      })
-    });
-
-    if (!response.ok) {
-      console.error('❌ LLM API error:', response.status);
-      return scoreGestureByRules(features, targetLabel);
-    }
-
-    const data = await response.json();
-    
-    if (!data.choices || !data.choices[0]) {
-      console.error('❌ No response from LLM');
-      return scoreGestureByRules(features, targetLabel);
-    }
-
-    let responseText = data.choices[0].message.content.trim();
-    console.log('📝 LLM response:', responseText);
-    
-    // Parse JSON
-    let accuracy = null;
-    try {
-      const parsed = JSON.parse(responseText);
-      accuracy = parsed.accuracy;
-    } catch (e) {
-      const match = responseText.match(/(\d+)/);
-      if (match) accuracy = parseInt(match[1]);
-    }
-    
-    if (accuracy !== null && accuracy >= 0 && accuracy <= 100) {
-      console.log(`✓ LLM Score for ${targetLabel}: ${accuracy}%`);
-      return accuracy;
-    } else {
-      console.error('❌ Invalid score:', accuracy);
-      return scoreGestureByRules(features, targetLabel);
-    }
-  } catch (error) {
-    console.error('❌ LLM error:', error);
-    return scoreGestureByRules(features, targetLabel);
-  }
+  console.log(`✅ Final score for ${targetLabel}: ${score.toFixed(0)}%`);
+  return score;
 }
 
 // Fallback pattern-based analysis if LLM is unavailable
@@ -797,7 +712,7 @@ function closeProgress() {
 }
 
 // Update Progress Stats
-function updateProgressStats() {
+async function updateProgressStats() {
   let alphabetCorrect = 0, numbersCorrect = 0;
   for (const key in STATE.userProgress) {
     if (key.startsWith('a_') && STATE.userProgress[key].correct > 0) alphabetCorrect++;
@@ -808,6 +723,48 @@ function updateProgressStats() {
   document.getElementById('alphabetDetails').textContent = `${alphabetCorrect}/26 learned`;
   document.getElementById('numbersPercent').textContent = Math.round((numbersCorrect / 10) * 100) + '%';
   document.getElementById('numbersDetails').textContent = `${numbersCorrect}/10 learned`;
+
+  // Use LLM to generate encouraging progress message
+  await generateProgressMessage(alphabetCorrect, numbersCorrect);
+}
+
+// Generate Progress Message using LLM
+async function generateProgressMessage(alphabetCount, numberCount) {
+  try {
+    const totalSigns = alphabetCount + numberCount;
+    const prompt = `You are an encouraging ASL teacher. The student has learned ${alphabetCount} out of 26 alphabet signs and ${numberCount} out of 10 number signs (total: ${totalSigns}/36). Generate a short, motivating one-line message (under 50 words) praising their progress and encouraging them to continue learning. Be enthusiastic but genuine.`;
+
+    const response = await fetch('https://api.deepinfra.com/v1/openai/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer a12a7d3705b12aeb46eb4cc8d77f5446'
+      },
+      body: JSON.stringify({
+        model: 'deepseek-ai/deepseek-chat',
+        messages: [{ role: 'user', content: prompt }],
+        max_tokens: 100
+      })
+    });
+
+    if (response.ok) {
+      const data = await response.json();
+      const message = data.choices?.[0]?.message?.content || `Great progress! You've learned ${totalSigns} signs!`;
+      
+      const progressMsg = document.getElementById('progressMessage');
+      if (progressMsg) {
+        progressMsg.textContent = message.trim();
+      }
+      console.log('✨ Progress message:', message);
+    }
+  } catch (error) {
+    console.log('Note: Could not fetch LLM progress message:', error);
+    // Fallback message
+    const progressMsg = document.getElementById('progressMessage');
+    if (progressMsg) {
+      progressMsg.textContent = `Amazing! You've learned ${alphabetCount + numberCount} signs! Keep it up! 🎉`;
+    }
+  }
 }
 
 // Get Sign Emoji
