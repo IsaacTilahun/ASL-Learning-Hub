@@ -533,11 +533,94 @@ async function analyzeGestureWithLLM(recordedFrames, targetLabel) {
   
   console.log('📊 Extracted features:', features);
   
-  // Score using deterministic rules (NOT LLM)
-  const score = scoreGestureByRules(features, targetLabel);
+  // Get the target sign description
+  const targetSign = STATE.currentMode === 'alphabet' ? 
+    ASL_ALPHABET.find(s => s.letter === targetLabel) :
+    ASL_NUMBERS.find(s => s.number === targetLabel);
   
-  console.log(`✅ Final score for ${targetLabel}: ${score.toFixed(0)}%`);
-  return score;
+  if (!targetSign) return 0;
+
+  const prompt = `You are a strict ASL gesture expert. Compare recorded gesture features to target sign "${targetLabel}".
+
+TARGET: ${targetLabel}
+DESCRIPTION: ${targetSign.description}
+REQUIRED: ${targetSign.hints.join(', ')}
+
+RECORDED GESTURE (YES/NO):
+- Thumb Extended: ${features.thumb_extended ? 'YES' : 'NO'}
+- Index Extended: ${features.index_extended ? 'YES' : 'NO'}
+- Middle Extended: ${features.middle_extended ? 'YES' : 'NO'}
+- Ring Extended: ${features.ring_extended ? 'YES' : 'NO'}
+- Pinky Extended: ${features.pinky_extended ? 'YES' : 'NO'}
+- Fingers Spread: ${features.fingers_spread ? 'YES' : 'NO'}
+- Fingers Together: ${features.fingers_together ? 'YES' : 'NO'}
+- Hand Open: ${features.is_open_hand ? 'YES' : 'NO'}
+- Hand Closed: ${features.is_closed_hand ? 'YES' : 'NO'}
+- Frames: ${features.frame_count}
+
+RULES:
+- If 0-2 features match requirement: score 10-30
+- If 3-4 features match: score 40-60
+- If 5+ features match: score 70-95
+- If all features match: score 95-100
+
+RESPOND WITH ONLY JSON:
+{"accuracy": 75}`;
+
+  try {
+    const response = await fetch('https://api.openai.com/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer a12a7d3705b12aeb46eb4cc8d77f5446`
+      },
+      body: JSON.stringify({
+        model: 'deepseekv32',
+        messages: [{
+          role: 'user',
+          content: prompt
+        }],
+        temperature: 0.0,
+        max_tokens: 30
+      })
+    });
+
+    if (!response.ok) {
+      console.error('❌ LLM API error:', response.status);
+      return scoreGestureByRules(features, targetLabel);
+    }
+
+    const data = await response.json();
+    
+    if (!data.choices || !data.choices[0]) {
+      console.error('❌ No response from LLM');
+      return scoreGestureByRules(features, targetLabel);
+    }
+
+    let responseText = data.choices[0].message.content.trim();
+    console.log('📝 LLM response:', responseText);
+    
+    // Parse JSON
+    let accuracy = null;
+    try {
+      const parsed = JSON.parse(responseText);
+      accuracy = parsed.accuracy;
+    } catch (e) {
+      const match = responseText.match(/(\d+)/);
+      if (match) accuracy = parseInt(match[1]);
+    }
+    
+    if (accuracy !== null && accuracy >= 0 && accuracy <= 100) {
+      console.log(`✓ LLM Score for ${targetLabel}: ${accuracy}%`);
+      return accuracy;
+    } else {
+      console.error('❌ Invalid score:', accuracy);
+      return scoreGestureByRules(features, targetLabel);
+    }
+  } catch (error) {
+    console.error('❌ LLM error:', error);
+    return scoreGestureByRules(features, targetLabel);
+  }
 }
 
 // Fallback pattern-based analysis if LLM is unavailable
