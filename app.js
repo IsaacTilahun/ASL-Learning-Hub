@@ -292,302 +292,318 @@ function recordGesture() {
   }
 }
 
-// Format landmarks as descriptive text for LLM analysis
-function formatLandmarksForLLM(frames) {
-  if (frames.length === 0) return '';
-  
-  // Use the last 10 frames (most stable part of gesture)
-  const stableFrames = frames.slice(Math.max(0, frames.length - 10));
-  const lastFrame = stableFrames[stableFrames.length - 1];
-  
-  if (!lastFrame || lastFrame.length < 21) return '';
-  
-  const wrist = lastFrame[0];
-  const thumbTip = lastFrame[4];
-  const indexTip = lastFrame[8];
-  const middleTip = lastFrame[12];
-  const ringTip = lastFrame[16];
-  const pinkyTip = lastFrame[20];
-  
-  // Calculate distances to determine openness and finger positions
-  const distances = {
-    thumb: Math.sqrt((thumbTip.x - wrist.x) ** 2 + (thumbTip.y - wrist.y) ** 2),
-    index: Math.sqrt((indexTip.x - wrist.x) ** 2 + (indexTip.y - wrist.y) ** 2),
-    middle: Math.sqrt((middleTip.x - wrist.x) ** 2 + (middleTip.y - wrist.y) ** 2),
-    ring: Math.sqrt((ringTip.x - wrist.x) ** 2 + (ringTip.y - wrist.y) ** 2),
-    pinky: Math.sqrt((pinkyTip.x - wrist.x) ** 2 + (pinkyTip.y - wrist.y) ** 2)
-  };
-  
-  // Determine which fingers are extended
-  const avgDistance = Object.values(distances).reduce((a, b) => a + b) / 5;
-  const extendedFingers = [];
-  if (distances.thumb > avgDistance * 0.8) extendedFingers.push('thumb');
-  if (distances.index > avgDistance * 0.8) extendedFingers.push('index');
-  if (distances.middle > avgDistance * 0.8) extendedFingers.push('middle');
-  if (distances.ring > avgDistance * 0.8) extendedFingers.push('ring');
-  if (distances.pinky > avgDistance * 0.8) extendedFingers.push('pinky');
-  
-  // Calculate hand openness
-  const handOpenness = Object.values(distances).reduce((a, b) => a + b) / 5;
-  const isOpenHand = handOpenness > 0.25;
-  
-  // Calculate finger spread
-  const indexMiddleDist = Math.sqrt((indexTip.x - middleTip.x) ** 2 + (indexTip.y - middleTip.y) ** 2);
-  const isSpread = indexMiddleDist > 0.12;
-  
-  const description = `
-Hand gesture recorded for ${frames.length} frames (stable analysis on last ${stableFrames.length} frames):
-- Hand is ${isOpenHand ? 'OPEN' : 'CLOSED'} (openness score: ${handOpenness.toFixed(2)})
-- Fingers extended: ${extendedFingers.length > 0 ? extendedFingers.join(', ') : 'none/curled'}
-- Fingers are ${isSpread ? 'SPREAD APART' : 'TOGETHER'}
-- Finger distances - Thumb: ${distances.thumb.toFixed(2)}, Index: ${distances.index.toFixed(2)}, Middle: ${distances.middle.toFixed(2)}, Ring: ${distances.ring.toFixed(2)}, Pinky: ${distances.pinky.toFixed(2)}
-- Average extension: ${handOpenness.toFixed(2)}
-`;
-  
-  return description;
-}
+// ============================================================================
+// SIGN ACCURACY SYSTEM
+// ============================================================================
+// 
+// HOW IT WORKS:
+// 1. Record frames of hand landmarks from MediaPipe
+// 2. Extract finger states (extended or curled) from the frames
+// 3. Compare against simple sign patterns
+// 4. Calculate accuracy score
+//
+// TO ADD A NEW SIGN:
+// 1. Add entry to SIGN_PATTERNS below with fingers that should be UP
+// 2. The system will automatically score it
+// ============================================================================
 
-// Define exact requirements for each sign
-const SIGN_REQUIREMENTS = {
-  'A': { thumb_extended: true, index_extended: false, middle_extended: false, ring_extended: false, pinky_extended: false, max_openness: 0.20 },
-  'B': { thumb_extended: false, index_extended: true, middle_extended: true, ring_extended: true, pinky_extended: true, min_openness: 0.30, fingers_spread: true },
-  'C': { thumb_extended: true, index_extended: true, middle_extended: true, ring_extended: true, pinky_extended: true, min_openness: 0.25, fingers_spread: true },
-  'D': { index_extended: true, middle_extended: false, ring_extended: false, pinky_extended: false, thumb_extended: false, max_openness: 0.22 },
-  'E': { thumb_extended: false, index_extended: false, middle_extended: false, ring_extended: false, pinky_extended: false, max_openness: 0.18 },
-  'F': { thumb_extended: true, index_extended: true, middle_extended: true, ring_extended: true, pinky_extended: true, max_openness: 0.15 },
-  'G': { index_extended: true, middle_extended: false, ring_extended: false, pinky_extended: false, thumb_extended: true, max_openness: 0.22 },
-  'H': { index_extended: true, middle_extended: true, ring_extended: false, pinky_extended: false, thumb_extended: false, max_openness: 0.22 },
-  'I': { pinky_extended: true, index_extended: false, middle_extended: false, ring_extended: false, thumb_extended: false, max_openness: 0.20 },
-  'J': { pinky_extended: true, index_extended: false, middle_extended: false, ring_extended: false, thumb_extended: false, max_openness: 0.20 },
-  'K': { index_extended: true, middle_extended: true, ring_extended: false, pinky_extended: false, thumb_extended: true, fingers_spread: true },
-  'L': { thumb_extended: true, index_extended: true, middle_extended: false, ring_extended: false, pinky_extended: false },
-  'M': { index_extended: false, middle_extended: false, ring_extended: false, pinky_extended: false, thumb_extended: false, max_openness: 0.18 },
-  'N': { index_extended: false, middle_extended: false, ring_extended: false, pinky_extended: false, thumb_extended: false, max_openness: 0.18 },
-  'O': { thumb_extended: false, index_extended: false, middle_extended: false, ring_extended: false, pinky_extended: false, fingers_together: true, max_openness: 0.10 },
-  'P': { index_extended: true, middle_extended: true, ring_extended: false, pinky_extended: false, thumb_extended: true, max_openness: 0.22 },
-  'Q': { index_extended: true, middle_extended: true, ring_extended: false, pinky_extended: false, thumb_extended: true },
-  'R': { index_extended: true, middle_extended: true, ring_extended: false, pinky_extended: false, thumb_extended: false, fingers_spread: true },
-  'S': { thumb_extended: true, index_extended: false, middle_extended: false, ring_extended: false, pinky_extended: false, max_openness: 0.18 },
-  'T': { thumb_extended: true, index_extended: false, middle_extended: false, ring_extended: false, pinky_extended: false, max_openness: 0.18 },
-  'U': { index_extended: true, middle_extended: true, ring_extended: false, pinky_extended: false, thumb_extended: false, fingers_spread: false },
-  'V': { index_extended: true, middle_extended: true, ring_extended: false, pinky_extended: false, thumb_extended: false, fingers_spread: true, min_openness: 0.25 },
-  'W': { index_extended: true, middle_extended: true, ring_extended: true, pinky_extended: false, thumb_extended: false, fingers_spread: true },
-  'X': { index_extended: true, middle_extended: true, ring_extended: false, pinky_extended: false, thumb_extended: false },
-  'Y': { thumb_extended: true, pinky_extended: true, index_extended: false, middle_extended: false, ring_extended: false },
-  'Z': { index_extended: true, middle_extended: false, ring_extended: false, pinky_extended: false, thumb_extended: false },
-  '1': { index_extended: true, middle_extended: false, ring_extended: false, pinky_extended: false, thumb_extended: false, max_openness: 0.20 },
-  '2': { index_extended: true, middle_extended: true, ring_extended: false, pinky_extended: false, thumb_extended: false, fingers_spread: true },
-  '3': { index_extended: true, middle_extended: true, ring_extended: true, pinky_extended: false, thumb_extended: true },
-  '4': { index_extended: true, middle_extended: true, ring_extended: true, pinky_extended: true, thumb_extended: false, min_openness: 0.28 },
-  '5': { index_extended: true, middle_extended: true, ring_extended: true, pinky_extended: true, thumb_extended: true, min_openness: 0.32 },
-  '6': { index_extended: false, middle_extended: false, ring_extended: false, pinky_extended: false, thumb_extended: true, max_openness: 0.20 },
-  '7': { index_extended: true, middle_extended: false, ring_extended: false, pinky_extended: false, thumb_extended: true },
-  '8': { index_extended: false, middle_extended: false, ring_extended: false, pinky_extended: false, thumb_extended: false, max_openness: 0.18 },
-  '9': { pinky_extended: true, index_extended: false, middle_extended: false, ring_extended: false, thumb_extended: true },
-  '10': { index_extended: true, middle_extended: true, ring_extended: true, pinky_extended: true, thumb_extended: true, min_openness: 0.32 }
+// ----------------------------------------------------------------------------
+// SIGN PATTERNS - Define which fingers should be UP for each sign
+// ----------------------------------------------------------------------------
+// Format: { sign: [thumb, index, middle, ring, pinky] }
+// 1 = finger should be UP/extended, 0 = finger should be DOWN/curled
+// null = don't care about this finger
+const SIGN_PATTERNS = {
+  // ALPHABET - Based on ASL fingerspelling
+  'A': [1, 0, 0, 0, 0],    // Thumb out, all others curled (fist)
+  'B': [0, 1, 1, 1, 1],    // Four fingers up, thumb tucked
+  'C': [1, 1, 1, 1, 1],    // All fingers curved (open C shape)
+  'D': [0, 1, 0, 0, 0],    // Index up only
+  'E': [0, 0, 0, 0, 0],    // All curled
+  'F': [1, 1, 1, 1, 1],    // Circle with thumb+index, others up
+  'G': [1, 1, 0, 0, 0],    // Thumb and index pointing
+  'H': [0, 1, 1, 0, 0],    // Index and middle sideways
+  'I': [0, 0, 0, 0, 1],    // Pinky up only
+  'J': [0, 0, 0, 0, 1],    // Pinky up (with motion)
+  'K': [1, 1, 1, 0, 0],    // Thumb, index, middle up
+  'L': [1, 1, 0, 0, 0],    // Thumb and index (L shape)
+  'M': [0, 0, 0, 0, 0],    // Fingers over thumb (closed)
+  'N': [0, 0, 0, 0, 0],    // Two fingers over thumb (closed)
+  'O': [1, 1, 1, 1, 1],    // All fingers touch (O shape)
+  'P': [1, 1, 1, 0, 0],    // Like K pointing down
+  'Q': [1, 1, 0, 0, 0],    // Thumb and index down
+  'R': [0, 1, 1, 0, 0],    // Index and middle crossed
+  'S': [1, 0, 0, 0, 0],    // Fist with thumb over
+  'T': [1, 0, 0, 0, 0],    // Thumb between index and middle
+  'U': [0, 1, 1, 0, 0],    // Index and middle up together
+  'V': [0, 1, 1, 0, 0],    // Peace sign / V shape
+  'W': [0, 1, 1, 1, 0],    // Three fingers up
+  'X': [0, 1, 0, 0, 0],    // Index hooked
+  'Y': [1, 0, 0, 0, 1],    // Thumb and pinky out (hang loose)
+  'Z': [0, 1, 0, 0, 0],    // Index traces Z
+
+  // NUMBERS
+  '1': [0, 1, 0, 0, 0],    // One finger up
+  '2': [0, 1, 1, 0, 0],    // Two fingers up
+  '3': [1, 1, 1, 0, 0],    // Three (thumb + 2 fingers)
+  '4': [0, 1, 1, 1, 1],    // Four fingers up
+  '5': [1, 1, 1, 1, 1],    // All five up
+  '6': [1, 0, 0, 0, 1],    // Thumb and pinky (like Y)
+  '7': [1, 1, 0, 0, 1],    // Thumb, index, pinky
+  '8': [1, 0, 1, 0, 0],    // Thumb and middle
+  '9': [1, 1, 0, 0, 0],    // Thumb and index touch
+  '10': [1, 1, 1, 1, 1]    // Thumbs up or all fingers
 };
 
-// Extract concrete features from hand landmarks
-function extractConcreteFeaturesFromFrames(frames) {
-  if (frames.length === 0) return null;
-  
-  const stableFrames = frames.slice(Math.max(0, frames.length - 10));
-  let features = {
-    thumb_extended: 0,
-    index_extended: 0,
-    middle_extended: 0,
-    ring_extended: 0,
-    pinky_extended: 0,
-    fingers_together: 0,
-    fingers_spread: 0,
-    hand_openness: 0
-  };
-  
-  for (let frame of stableFrames) {
-    if (!frame || frame.length < 21) continue;
-    
-    const wrist = frame[0];
-    
-    // Calculate extension of each finger
-    const thumbDist = Math.sqrt((frame[4].x - wrist.x) ** 2 + (frame[4].y - wrist.y) ** 2);
-    const indexDist = Math.sqrt((frame[8].x - wrist.x) ** 2 + (frame[8].y - wrist.y) ** 2);
-    const middleDist = Math.sqrt((frame[12].x - wrist.x) ** 2 + (frame[12].y - wrist.y) ** 2);
-    const ringDist = Math.sqrt((frame[16].x - wrist.x) ** 2 + (frame[16].y - wrist.y) ** 2);
-    const pinkyDist = Math.sqrt((frame[20].x - wrist.x) ** 2 + (frame[20].y - wrist.y) ** 2);
-    
-    const avgDist = (thumbDist + indexDist + middleDist + ringDist + pinkyDist) / 5;
-    
-    // If finger is > 70% of average = extended
-    if (thumbDist > avgDist * 0.7) features.thumb_extended++;
-    if (indexDist > avgDist * 0.7) features.index_extended++;
-    if (middleDist > avgDist * 0.7) features.middle_extended++;
-    if (ringDist > avgDist * 0.7) features.ring_extended++;
-    if (pinkyDist > avgDist * 0.7) features.pinky_extended++;
-    
-    // Finger spread (distance between index and middle tips)
-    const indexMiddleDist = Math.sqrt((frame[8].x - frame[12].x) ** 2 + (frame[8].y - frame[12].y) ** 2);
-    if (indexMiddleDist > 0.12) features.fingers_spread++;
-    else features.fingers_together++;
-    
-    // Hand openness
-    features.hand_openness += avgDist;
+// ----------------------------------------------------------------------------
+// FEATURE EXTRACTION - Get finger states from recorded frames
+// ----------------------------------------------------------------------------
+/**
+ * Extracts finger extension states from recorded hand landmark frames
+ * @param {Array} frames - Array of hand landmark arrays from MediaPipe
+ * @returns {Object} Object with boolean for each finger and confidence scores
+ */
+function extractFingerStates(frames) {
+  // Need at least some frames to analyze
+  if (!frames || frames.length === 0) {
+    console.log('❌ No frames to analyze');
+    return null;
   }
+
+  // Use the last 15 frames for stability (or all if less)
+  const analyzeCount = Math.min(15, frames.length);
+  const stableFrames = frames.slice(-analyzeCount);
   
-  const numFrames = Math.max(1, stableFrames.length);
-  return {
-    thumb_extended: features.thumb_extended >= numFrames * 0.6,
-    index_extended: features.index_extended >= numFrames * 0.6,
-    middle_extended: features.middle_extended >= numFrames * 0.6,
-    ring_extended: features.ring_extended >= numFrames * 0.6,
-    pinky_extended: features.pinky_extended >= numFrames * 0.6,
-    fingers_spread: features.fingers_spread > numFrames * 0.5,
-    fingers_together: features.fingers_together > numFrames * 0.5,
-    hand_openness: features.hand_openness / numFrames,
-    is_open_hand: (features.hand_openness / numFrames) > 0.25,
-    is_closed_hand: (features.hand_openness / numFrames) <= 0.25,
-    frame_count: frames.length
+  // Count how many frames each finger appears extended
+  let extendedCounts = { thumb: 0, index: 0, middle: 0, ring: 0, pinky: 0 };
+  let validFrames = 0;
+
+  for (const frame of stableFrames) {
+    // Skip invalid frames
+    if (!frame || frame.length < 21) continue;
+    validFrames++;
+
+    // Get key landmark positions
+    // MediaPipe hand landmarks: 0=wrist, 4=thumb tip, 8=index tip, etc.
+    const wrist = frame[0];
+    const thumbTip = frame[4];
+    const thumbBase = frame[2];
+    const indexTip = frame[8];
+    const indexBase = frame[5];
+    const middleTip = frame[12];
+    const middleBase = frame[9];
+    const ringTip = frame[16];
+    const ringBase = frame[13];
+    const pinkyTip = frame[20];
+    const pinkyBase = frame[17];
+
+    // Calculate if each finger is extended
+    // A finger is "extended" if the tip is far from the wrist relative to the base
+    
+    // Helper: distance between two points
+    const dist = (a, b) => Math.sqrt((a.x - b.x) ** 2 + (a.y - b.y) ** 2);
+    
+    // Helper: check if finger is extended (tip farther from palm than base)
+    const isExtended = (tip, base, wrist) => {
+      const tipDist = dist(tip, wrist);
+      const baseDist = dist(base, wrist);
+      // If tip is at least 1.2x farther than base, finger is extended
+      return tipDist > baseDist * 1.1;
+    };
+
+    // Check each finger
+    // Thumb is special - check horizontal distance from palm center
+    const palmCenter = { x: (wrist.x + frame[9].x) / 2, y: (wrist.y + frame[9].y) / 2 };
+    const thumbExtended = Math.abs(thumbTip.x - palmCenter.x) > 0.1 || dist(thumbTip, wrist) > dist(thumbBase, wrist) * 1.1;
+    
+    if (thumbExtended) extendedCounts.thumb++;
+    if (isExtended(indexTip, indexBase, wrist)) extendedCounts.index++;
+    if (isExtended(middleTip, middleBase, wrist)) extendedCounts.middle++;
+    if (isExtended(ringTip, ringBase, wrist)) extendedCounts.ring++;
+    if (isExtended(pinkyTip, pinkyBase, wrist)) extendedCounts.pinky++;
+  }
+
+  // Need at least 3 valid frames
+  if (validFrames < 3) {
+    console.log('❌ Not enough valid frames:', validFrames);
+    return null;
+  }
+
+  // Convert counts to booleans (extended if > 40% of frames show it extended)
+  const threshold = validFrames * 0.4;
+  
+  const result = {
+    thumb: extendedCounts.thumb > threshold,
+    index: extendedCounts.index > threshold,
+    middle: extendedCounts.middle > threshold,
+    ring: extendedCounts.ring > threshold,
+    pinky: extendedCounts.pinky > threshold,
+    // Include raw confidence scores for debugging
+    confidence: {
+      thumb: Math.round((extendedCounts.thumb / validFrames) * 100),
+      index: Math.round((extendedCounts.index / validFrames) * 100),
+      middle: Math.round((extendedCounts.middle / validFrames) * 100),
+      ring: Math.round((extendedCounts.ring / validFrames) * 100),
+      pinky: Math.round((extendedCounts.pinky / validFrames) * 100)
+    },
+    frameCount: validFrames
   };
+
+  console.log('📊 Extracted finger states:', result);
+  return result;
 }
 
-// Score gesture by checking requirements
-function scoreGestureByRules(features, targetLabel) {
-  const req = SIGN_REQUIREMENTS[targetLabel];
-  if (!req) return 50; // Unknown sign
+// ----------------------------------------------------------------------------
+// SCORING - Compare detected fingers against expected pattern
+// ----------------------------------------------------------------------------
+/**
+ * Calculate accuracy score by comparing finger states to expected pattern
+ * @param {Object} fingerStates - Detected finger states from extractFingerStates()
+ * @param {string} targetSign - The sign we're trying to match (e.g., 'A', '5')
+ * @returns {number} Accuracy score from 0-100
+ */
+function calculateAccuracy(fingerStates, targetSign) {
+  // Get the expected pattern for this sign
+  const pattern = SIGN_PATTERNS[targetSign];
   
+  if (!pattern) {
+    console.log(`⚠️ No pattern defined for sign: ${targetSign}`);
+    return 50; // Default score for unknown signs
+  }
+
+  if (!fingerStates) {
+    console.log('❌ No finger states to score');
+    return 0;
+  }
+
+  // Compare each finger [thumb, index, middle, ring, pinky]
+  const fingers = ['thumb', 'index', 'middle', 'ring', 'pinky'];
   let matchCount = 0;
   let totalChecks = 0;
-  
-  // Check each requirement
-  if (req.thumb_extended !== undefined) {
-    totalChecks++;
-    if (features.thumb_extended === req.thumb_extended) matchCount++;
-    else console.log(`❌ Thumb mismatch: need ${req.thumb_extended}, got ${features.thumb_extended}`);
-  }
-  
-  if (req.index_extended !== undefined) {
-    totalChecks++;
-    if (features.index_extended === req.index_extended) matchCount++;
-    else console.log(`❌ Index mismatch: need ${req.index_extended}, got ${features.index_extended}`);
-  }
-  
-  if (req.middle_extended !== undefined) {
-    totalChecks++;
-    if (features.middle_extended === req.middle_extended) matchCount++;
-    else console.log(`❌ Middle mismatch: need ${req.middle_extended}, got ${features.middle_extended}`);
-  }
-  
-  if (req.ring_extended !== undefined) {
-    totalChecks++;
-    if (features.ring_extended === req.ring_extended) matchCount++;
-    else console.log(`❌ Ring mismatch: need ${req.ring_extended}, got ${features.ring_extended}`);
-  }
-  
-  if (req.pinky_extended !== undefined) {
-    totalChecks++;
-    if (features.pinky_extended === req.pinky_extended) matchCount++;
-    else console.log(`❌ Pinky mismatch: need ${req.pinky_extended}, got ${features.pinky_extended}`);
-  }
-  
-  if (req.max_openness !== undefined) {
-    totalChecks++;
-    if (features.hand_openness <= req.max_openness) matchCount++;
-    else console.log(`❌ Hand too open: ${features.hand_openness.toFixed(2)} > ${req.max_openness}`);
-  }
-  
-  if (req.min_openness !== undefined) {
-    totalChecks++;
-    if (features.hand_openness >= req.min_openness) matchCount++;
-    else console.log(`❌ Hand too closed: ${features.hand_openness.toFixed(2)} < ${req.min_openness}`);
-  }
-  
-  if (req.fingers_spread !== undefined) {
-    totalChecks++;
-    if (features.fingers_spread === req.fingers_spread) matchCount++;
-    else console.log(`❌ Finger spread mismatch: need ${req.fingers_spread}, got ${features.fingers_spread}`);
-  }
-  
-  if (req.fingers_together !== undefined) {
-    totalChecks++;
-    if (features.fingers_together === req.fingers_together) matchCount++;
-    else console.log(`❌ Fingers together mismatch: need ${req.fingers_together}, got ${features.fingers_together}`);
-  }
-  
-  // Calculate accuracy
-  if (totalChecks === 0) return 50;
-  const percentMatch = (matchCount / totalChecks) * 100;
-  
-  console.log(`✓ ${targetLabel}: ${matchCount}/${totalChecks} requirements matched = ${percentMatch.toFixed(0)}%`);
-  
-  // Convert percentage to accuracy score
-  if (percentMatch >= 80) return 80 + (percentMatch - 80);
-  else if (percentMatch >= 60) return 50 + (percentMatch - 60);
-  else if (percentMatch >= 40) return 30 + (percentMatch - 40);
-  else return Math.max(10, percentMatch / 2);
-}
+  let details = [];
 
-// Call LLM to analyze gesture accuracy
-async function analyzeGestureWithLLM(recordedFrames, targetLabel) {
-  // Extract concrete yes/no features
-  const features = extractConcreteFeaturesFromFrames(recordedFrames);
-  if (!features) return 0;
-  
-  console.log('📊 Extracted features:', features);
-  
-  // Score using deterministic rules (NOT LLM)
-  const score = scoreGestureByRules(features, targetLabel);
-  
-  console.log(`✅ Final score for ${targetLabel}: ${score.toFixed(0)}%`);
-  return score;
-}
+  for (let i = 0; i < 5; i++) {
+    const expected = pattern[i];
+    const actual = fingerStates[fingers[i]];
+    const confidence = fingerStates.confidence[fingers[i]];
 
-// Fallback pattern-based analysis if LLM is unavailable
-function fallbackPatternAnalysis(recordedFrames, targetLabel) {
-  const features = extractGestureFeatures(recordedFrames);
-  if (!features) return 0;
-  
-  // Simple heuristic: score based on frame count and hand position stability
-  let score = Math.min(100, features.frameCount * 4);
-  console.log(`Fallback analysis for ${targetLabel}: ${score.toFixed(0)}%`);
-  return score;
-}
+    // Skip if pattern says "don't care" (null)
+    if (expected === null) continue;
 
-// Extract features from frames for fallback analysis
-function extractGestureFeatures(frames) {
-  if (frames.length === 0) return null;
-  
-  const stableFrames = frames.slice(Math.max(0, frames.length - 10));
-  
-  let totalHandOpenness = 0;
-  let fingerExtension = { thumb: 0, index: 0, middle: 0, ring: 0, pinky: 0 };
-  
-  for (let frame of stableFrames) {
-    if (!frame || frame.length < 21) continue;
-    
-    const wrist = frame[0];
-    const palmCenter = { x: (frame[0].x + frame[9].x) / 2, y: (frame[0].y + frame[9].y) / 2 };
-    
-    let openness = 0;
-    for (let point of frame) {
-      const dx = point.x - palmCenter.x;
-      const dy = point.y - palmCenter.y;
-      openness += Math.sqrt(dx * dx + dy * dy);
+    totalChecks++;
+    const expectedUp = expected === 1;
+    const match = actual === expectedUp;
+
+    if (match) {
+      matchCount++;
+      details.push(`✓ ${fingers[i]}: ${actual ? 'UP' : 'DOWN'} (${confidence}%)`);
+    } else {
+      details.push(`✗ ${fingers[i]}: expected ${expectedUp ? 'UP' : 'DOWN'}, got ${actual ? 'UP' : 'DOWN'} (${confidence}%)`);
     }
-    totalHandOpenness += openness / frame.length;
-    
-    fingerExtension.thumb += Math.sqrt((frame[4].x - wrist.x) ** 2 + (frame[4].y - wrist.y) ** 2);
-    fingerExtension.index += Math.sqrt((frame[8].x - wrist.x) ** 2 + (frame[8].y - wrist.y) ** 2);
-    fingerExtension.middle += Math.sqrt((frame[12].x - wrist.x) ** 2 + (frame[12].y - wrist.y) ** 2);
-    fingerExtension.ring += Math.sqrt((frame[16].x - wrist.x) ** 2 + (frame[16].y - wrist.y) ** 2);
-    fingerExtension.pinky += Math.sqrt((frame[20].x - wrist.x) ** 2 + (frame[20].y - wrist.y) ** 2);
   }
+
+  // Log detailed breakdown
+  console.log(`\n📋 Sign "${targetSign}" breakdown:`);
+  details.forEach(d => console.log('  ' + d));
+
+  // Calculate base accuracy from matches
+  const baseAccuracy = totalChecks > 0 ? (matchCount / totalChecks) * 100 : 0;
+
+  // Apply generous scoring curve to make it more achievable
+  // This rewards partial matches and makes the experience more encouraging
+  let finalScore;
+  if (baseAccuracy >= 80) {
+    // 80-100% match -> 80-100 score (great job!)
+    finalScore = 80 + (baseAccuracy - 80);
+  } else if (baseAccuracy >= 60) {
+    // 60-79% match -> 60-79 score (good effort)
+    finalScore = 60 + (baseAccuracy - 60);
+  } else if (baseAccuracy >= 40) {
+    // 40-59% match -> 45-59 score (keep trying)
+    finalScore = 45 + (baseAccuracy - 40) * 0.7;
+  } else {
+    // Below 40% -> 25-44 score (needs work but not discouraging)
+    finalScore = 25 + baseAccuracy * 0.5;
+  }
+
+  console.log(`📊 Result: ${matchCount}/${totalChecks} fingers correct = ${baseAccuracy.toFixed(0)}% -> Score: ${finalScore.toFixed(0)}%`);
   
-  const numFrames = Math.max(1, stableFrames.length);
-  return {
-    handOpenness: totalHandOpenness / numFrames,
-    fingerExtension: fingerExtension,
-    frameCount: frames.length
-  };
+  return Math.round(finalScore);
 }
+
+// ----------------------------------------------------------------------------
+// MAIN ANALYSIS FUNCTION - Called when user submits a gesture
+// ----------------------------------------------------------------------------
+/**
+ * Main function to analyze recorded gesture and return accuracy score
+ * @param {Array} recordedFrames - Frames captured during recording
+ * @param {string} targetLabel - The sign being attempted
+ * @returns {number} Accuracy score 0-100
+ */
+async function analyzeGesture(recordedFrames, targetLabel) {
+  console.log(`\n🎯 Analyzing gesture for: ${targetLabel}`);
+  console.log(`📹 Frames recorded: ${recordedFrames.length}`);
+
+  // Step 1: Extract finger states from the recorded frames
+  const fingerStates = extractFingerStates(recordedFrames);
+  
+  if (!fingerStates) {
+    console.log('❌ Could not extract finger states');
+    return 0;
+  }
+
+  // Step 2: Calculate accuracy against the expected pattern
+  const score = calculateAccuracy(fingerStates, targetLabel);
+  
+  console.log(`✅ Final score for "${targetLabel}": ${score}%\n`);
+  return score;
+}
+
+// ============================================================================
+// LEGACY FUNCTIONS (kept for compatibility, not used by main system)
+// ============================================================================
+
+/*
+// Old LLM-based analysis - commented out but kept for reference
+async function analyzeWithLLM_OLD(frames, label) {
+  // This used to call an external API for analysis
+  // Now we use local pattern matching which is faster and more reliable
+}
+*/
+
+/*
+// Old complex feature extraction - commented out
+function extractConcreteFeaturesFromFrames_OLD(frames) {
+  // This had many parameters and was hard to tune
+  // The new extractFingerStates() is simpler and works better
+}
+*/
+
+/*
+// Old scoring function - commented out  
+function scoreGestureByRules_OLD(features, targetLabel) {
+  // This had complex rules that were hard to maintain
+  // The new calculateAccuracy() is simpler and more generous
+}
+*/
+
+// ============================================================================
+// UNUSED LEGACY FUNCTIONS - Kept for reference, can be deleted
+// ============================================================================
+
+/*
+// Fallback pattern-based analysis - no longer needed
+function fallbackPatternAnalysis(recordedFrames, targetLabel) {
+  // The new system handles all cases
+  return 50;
+}
+
+// Old feature extraction - replaced by extractFingerStates()
+function extractGestureFeatures(frames) {
+  // No longer used
+  return null;
+}
+*/
 
 // Submit Gesture Function
 async function submitGesture() {
@@ -603,7 +619,7 @@ async function submitGesture() {
   document.getElementById('feedbackBox').className = 'feedback-box feedback-warning';
 
   // Analyze using LLM
-  const accuracy = await analyzeGestureWithLLM(STATE.recordedFrames, label);
+  const accuracy = await analyzeGesture(STATE.recordedFrames, label);
 
   const key = `${STATE.currentMode === 'alphabet' ? 'a' : 'n'}_${label}`;
   if (!STATE.userProgress[key]) STATE.userProgress[key] = { attempts: 0, correct: 0 };
