@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ASL Learning Hub - Learn Sign Language</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="app-container">
+        <!-- Header -->
+        <header class="app-header">
+            <div class="header-content">
+                <h1>🤟 ASL Learning Hub</h1>
+                <p class="subtitle">Master Sign Language with AI Feedback</p>
+            </div>
+            <div class="header-stats">
+                <div class="stat">
+                    <span class="stat-label">Accuracy</span>
+                    <span class="stat-value" id="accuracyDisplay">--</span>
+                </div>
+                <div class="stat">
+                    <span class="stat-label">Progress</span>
+                    <span class="stat-value" id="progressDisplay">0%</span>
+                </div>
+            </div>
+        </header>
+
+        <div class="main-content">
+            <!-- Mode Selection -->
+            <div id="modeSelection" class="mode-selection">
+                <h2>Choose a Learning Mode</h2>
+                <div class="mode-grid">
+                    <button class="mode-btn" onclick="startLesson('alphabet')">
+                        <span class="mode-icon">🔤</span>
+                        <span class="mode-title">Alphabet (A-Z)</span>
+                        <span class="mode-desc">Learn ASL alphabet</span>
+                    </button>
+                    <button class="mode-btn" onclick="startLesson('numbers')">
+                        <span class="mode-icon">🔢</span>
+                        <span class="mode-title">Numbers (1-10)</span>
+                        <span class="mode-desc">Learn ASL numbers</span>
+                    </button>
+                    <button class="mode-btn" onclick="showProgress()">
+                        <span class="mode-icon">📊</span>
+                        <span class="mode-title">Progress Tracker</span>
+                        <span class="mode-desc">View your stats</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Learning Interface -->
+            <div id="learningInterface" class="learning-interface hidden">
+                <div class="lesson-container">
+                    <!-- Left Side: Video Feed -->
+                    <div class="video-section">
+                        <div class="video-wrapper">
+                            <video id="webcam" class="video-feed" playsinline></video>
+                            <canvas id="handCanvas" class="hand-canvas"></canvas>
+                            <div class="video-overlay">
+                                <span id="statusIndicator" class="status listening">Listening...</span>
+                            </div>
+                        </div>
+                        <div class="camera-controls">
+                            <button id="toggleCamera" class="control-btn">📷 Start Camera</button>
+                            <button id="recordGesture" class="control-btn record-btn" disabled>⏺️ Record Gesture</button>
+                        </div>
+                        
+                        <!-- Troubleshooting Tips -->
+                        <div class="troubleshooting-tips">
+                            <details>
+                                <summary>💡 Hand Not Detected? Try These:</summary>
+                                <ul>
+                                    <li>✓ Check lighting - need good light on your hand</li>
+                                    <li>✓ Move hand into the center of frame</li>
+                                    <li>✓ Keep hand 1-2 feet from camera</li>
+                                    <li>✓ Make clear hand shapes (not blurry)</li>
+                                    <li>✓ Check browser console (F12) for errors</li>
+                                    <li>✓ Try refreshing the page</li>
+                                    <li>✓ Try a different browser (Chrome works best)</li>
+                                </ul>
+                            </details>
+                        </div>
+                    </div>
+
+                    <!-- Right Side: Lesson Content -->
+                    <div class="lesson-content">
+                        <div class="lesson-header">
+                            <button class="back-btn" onclick="backToMenu()">← Back</button>
+                            <h2 id="lessonTitle">Learning: A</h2>
+                            <span id="lessonCounter" class="lesson-counter">1/26</span>
+                        </div>
+
+                        <!-- Target Sign Display -->
+                        <div class="target-section">
+                            <h3>Target Sign</h3>
+                            <div class="target-display">
+                                <div class="sign-image" id="signImage">🤟</div>
+                                <div class="sign-description" id="signDescription">
+                                    <p>Watch the animation or image to see the correct sign</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Feedback Section -->
+                        <div class="feedback-section">
+                            <div class="feedback-box" id="feedbackBox">
+                                <p class="feedback-placeholder">Make the sign to get feedback</p>
+                            </div>
+                            <div class="confidence-meter">
+                                <label>Confidence Level</label>
+                                <div class="confidence-bar">
+                                    <div class="confidence-fill" id="confidenceFill"></div>
+                                </div>
+                                <span id="confidenceValue">0%</span>
+                            </div>
+                        </div>
+
+                        <!-- Action Buttons -->
+                        <div class="lesson-actions">
+                            <button id="nextBtn" class="action-btn secondary" onclick="nextSign()">Next →</button>
+                            <button id="submitBtn" class="action-btn primary" onclick="submitGesture()" disabled>Submit</button>
+                        </div>
+
+                        <!-- Progress Bar -->
+                        <div class="progress-bar-section">
+                            <div class="progress-bar">
+                                <div class="progress-fill" id="lessonProgress"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Progress Modal -->
+            <div id="progressModal" class="modal hidden">
+                <div class="modal-content">
+                    <button class="close-btn" onclick="closeProgress()">×</button>
+                    <h2>📊 Your Progress</h2>
+                    <div class="progress-stats">
+                        <div class="progress-card">
+                            <h4>Alphabet Progress</h4>
+                            <div class="progress-circle">
+                                <div class="circle-text" id="alphabetPercent">0%</div>
+                            </div>
+                            <p id="alphabetDetails">0/26 learned</p>
+                        </div>
+                        <div class="progress-card">
+                            <h4>Numbers Progress</h4>
+                            <div class="progress-circle">
+                                <div class="circle-text" id="numbersPercent">0%</div>
+                            </div>
+                            <p id="numbersDetails">0/10 learned</p>
+                        </div>
+                    </div>
+                    <div class="achievements">
+                        <h4>🏆 Achievements</h4>
+                        <div id="achievementsList" class="achievements-list"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Celebration Animation -->
+        <div id="celebration" class="celebration hidden">
+            <div class="confetti"></div>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils/drawing_utils.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js"></script>
+    <script src="app.js"></script>
+</body>
+</html>
