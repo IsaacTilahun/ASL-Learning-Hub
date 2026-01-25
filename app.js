@@ -12,7 +12,10 @@ const STATE = {
   canvasElement: null,
   canvasContext: null,
   frameCounter: 0,
-  userProgress: loadProgress()
+  userProgress: loadProgress(),
+  // Smoothing for live accuracy display
+  smoothedAccuracy: 0,
+  lastAccuracyUpdate: 0
 };
 
 // ASL Alphabet Database
@@ -83,13 +86,12 @@ document.addEventListener('DOMContentLoaded', () => {
 function setupEventListeners() {
   const cameraBtn = document.getElementById('toggleCamera');
   const recordBtn = document.getElementById('recordGesture');
-  const submitBtn = document.getElementById('submitBtn');
-  const nextBtn = document.getElementById('nextBtn');
+  // NOTE: submitBtn and nextBtn already have onclick handlers in HTML
+  // Do NOT add duplicate event listeners here or the functions will run twice!
 
   if (cameraBtn) cameraBtn.addEventListener('click', toggleCamera);
   if (recordBtn) recordBtn.addEventListener('click', recordGesture);
-  if (submitBtn) submitBtn.addEventListener('click', submitGesture);
-  if (nextBtn) nextBtn.addEventListener('click', nextSign);
+  // Removed: submitBtn and nextBtn listeners - they use onclick in HTML
 }
 
 // Start or Stop Camera
@@ -188,19 +190,42 @@ function handleHandsResults(results) {
     document.getElementById('statusIndicator').textContent = 'Hands Detected ✓';
     document.getElementById('statusIndicator').className = 'status success';
 
-    // UPDATE CONFIDENCE METER - Based on hand detection quality
-    if (results.multiHandedness && results.multiHandedness.length > 0) {
-      const confidence = results.multiHandedness[0].score;
-      const confidencePercent = Math.round(confidence * 100);
-      const confidenceFill = document.getElementById('confidenceFill');
-      const confidenceValue = document.getElementById('confidenceValue');
+    // UPDATE CONFIDENCE METER - Show LIVE ACCURACY against current sign
+    const confidenceFill = document.getElementById('confidenceFill');
+    const confidenceValue = document.getElementById('confidenceValue');
+    
+    if (STATE.currentMode && confidenceFill && confidenceValue) {
+      // Calculate live accuracy against current target sign
+      const landmarks = results.multiHandLandmarks[0];
+      const rawAccuracy = calculateLiveAccuracy(landmarks);
       
-      if (confidenceFill) {
-        confidenceFill.style.width = confidencePercent + '%';
+      // Smooth the accuracy using exponential moving average
+      // Higher smoothing factor (0.15) = more responsive, lower (0.05) = smoother
+      const smoothingFactor = 0.12;
+      STATE.smoothedAccuracy = STATE.smoothedAccuracy * (1 - smoothingFactor) + rawAccuracy * smoothingFactor;
+      const liveAccuracy = Math.round(STATE.smoothedAccuracy);
+      
+      confidenceFill.style.width = liveAccuracy + '%';
+      confidenceValue.textContent = liveAccuracy + '%';
+      
+      // Smooth transition for the bar width
+      confidenceFill.style.transition = 'width 0.15s ease-out, background 0.3s ease';
+      
+      // Color code based on accuracy
+      if (liveAccuracy >= 60) {
+        confidenceFill.style.background = 'linear-gradient(90deg, #10b981, #34d399)'; // Green
+      } else if (liveAccuracy >= 40) {
+        confidenceFill.style.background = 'linear-gradient(90deg, #f59e0b, #fbbf24)'; // Yellow
+      } else {
+        confidenceFill.style.background = 'linear-gradient(90deg, #ef4444, #f87171)'; // Red
       }
-      if (confidenceValue) {
-        confidenceValue.textContent = confidencePercent + '%';
-      }
+    } else if (confidenceFill && confidenceValue) {
+      // Not in lesson mode, show detection confidence
+      const confidence = results.multiHandedness?.[0]?.score || 0;
+      const confidencePercent = Math.round(confidence * 100);
+      confidenceFill.style.width = confidencePercent + '%';
+      confidenceValue.textContent = confidencePercent + '%';
+      confidenceFill.style.background = 'linear-gradient(90deg, #6366f1, #8b5cf6)'; // Purple default
     }
 
     // CAPTURE FRAMES IF RECORDING
@@ -218,12 +243,107 @@ function handleHandsResults(results) {
     document.getElementById('statusIndicator').textContent = 'No hands detected';
     document.getElementById('statusIndicator').className = 'status error';
     
-    // Reset confidence meter when no hands detected
+    // Reset confidence meter to 0 when no hands detected
     const confidenceFill = document.getElementById('confidenceFill');
     const confidenceValue = document.getElementById('confidenceValue');
-    if (confidenceFill) confidenceFill.style.width = '0%';
-    if (confidenceValue) confidenceValue.textContent = '0%';
+    if (confidenceFill) {
+      // Smoothly decay to 0 when hands are lost
+      STATE.smoothedAccuracy = STATE.smoothedAccuracy * 0.85;
+      const displayValue = Math.round(STATE.smoothedAccuracy);
+      confidenceFill.style.width = displayValue + '%';
+      confidenceFill.style.transition = 'width 0.2s ease-out';
+      confidenceFill.style.background = 'linear-gradient(90deg, #6366f1, #8b5cf6)'; // Reset to default color
+    }
+    if (confidenceValue) confidenceValue.textContent = Math.round(STATE.smoothedAccuracy) + '%';
   }
+}
+
+// ----------------------------------------------------------------------------
+// LIVE ACCURACY - Calculate accuracy from a single frame in real-time
+// ----------------------------------------------------------------------------
+/**
+ * Calculate live accuracy from a single frame against current target sign
+ * @param {Array} landmarks - Single frame of hand landmarks
+ * @returns {number} Accuracy percentage 0-100
+ */
+function calculateLiveAccuracy(landmarks) {
+  if (!landmarks || landmarks.length < 21) return 0;
+  if (!STATE.currentMode) return 0;
+  
+  // Get current target sign
+  const isAlphabet = STATE.currentMode === 'alphabet';
+  const signs = isAlphabet ? ASL_ALPHABET : ASL_NUMBERS;
+  const currentSign = signs[STATE.currentIndex];
+  const targetLabel = isAlphabet ? currentSign.letter : currentSign.number;
+  
+  // Get the expected pattern
+  const pattern = SIGN_PATTERNS[targetLabel];
+  if (!pattern) return 0;
+  
+  // Extract finger states from single frame
+  const wrist = landmarks[0];
+  const thumbTip = landmarks[4];
+  const thumbBase = landmarks[2];
+  const indexTip = landmarks[8];
+  const indexBase = landmarks[5];
+  const middleTip = landmarks[12];
+  const middleBase = landmarks[9];
+  const ringTip = landmarks[16];
+  const ringBase = landmarks[13];
+  const pinkyTip = landmarks[20];
+  const pinkyBase = landmarks[17];
+  
+  // Helper: distance between two points
+  const dist = (a, b) => Math.sqrt((a.x - b.x) ** 2 + (a.y - b.y) ** 2);
+  
+  // Helper: check if finger is extended
+  const isExtended = (tip, base, wrist) => {
+    const tipDist = dist(tip, wrist);
+    const baseDist = dist(base, wrist);
+    return tipDist > baseDist * 1.1;
+  };
+  
+  // Check thumb (special case - horizontal distance)
+  const palmCenter = { x: (wrist.x + landmarks[9].x) / 2, y: (wrist.y + landmarks[9].y) / 2 };
+  const thumbExtended = Math.abs(thumbTip.x - palmCenter.x) > 0.1 || dist(thumbTip, wrist) > dist(thumbBase, wrist) * 1.1;
+  
+  // Get all finger states
+  const fingerStates = [
+    thumbExtended,
+    isExtended(indexTip, indexBase, wrist),
+    isExtended(middleTip, middleBase, wrist),
+    isExtended(ringTip, ringBase, wrist),
+    isExtended(pinkyTip, pinkyBase, wrist)
+  ];
+  
+  // Compare against pattern
+  let matchCount = 0;
+  let totalChecks = 0;
+  
+  for (let i = 0; i < 5; i++) {
+    if (pattern[i] === null) continue; // Skip "don't care"
+    totalChecks++;
+    const expectedUp = pattern[i] === 1;
+    if (fingerStates[i] === expectedUp) matchCount++;
+  }
+  
+  if (totalChecks === 0) return 50;
+  
+  // Calculate and apply scoring curve
+  const baseAccuracy = (matchCount / totalChecks) * 100;
+  
+  let finalScore;
+  if (baseAccuracy >= 80) {
+    finalScore = 80 + (baseAccuracy - 80);
+  } else if (baseAccuracy >= 60) {
+    finalScore = 60 + (baseAccuracy - 60);
+  } else if (baseAccuracy >= 40) {
+    finalScore = 45 + (baseAccuracy - 40) * 0.7;
+  } else {
+    finalScore = 25 + baseAccuracy * 0.5;
+  }
+  
+  return Math.round(finalScore);
 }
 
 // Draw Hand Connectors
@@ -320,7 +440,7 @@ const SIGN_PATTERNS = {
   'C': [1, 1, 1, 1, 1],    // All fingers curved (open C shape)
   'D': [0, 1, 0, 0, 0],    // Index up only
   'E': [0, 0, 0, 0, 0],    // All curled
-  'F': [1, 1, 1, 1, 1],    // Circle with thumb+index, others up
+  'F': [0, 0, 1, 1, 1],    // Circle with thumb+index, others up
   'G': [1, 1, 0, 0, 0],    // Thumb and index pointing
   'H': [0, 1, 1, 0, 0],    // Index and middle sideways
   'I': [0, 0, 0, 0, 1],    // Pinky up only
@@ -350,9 +470,9 @@ const SIGN_PATTERNS = {
   '5': [1, 1, 1, 1, 1],    // All five up
   '6': [1, 0, 0, 0, 1],    // Thumb and pinky (like Y)
   '7': [1, 1, 0, 0, 1],    // Thumb, index, pinky
-  '8': [1, 0, 1, 0, 0],    // Thumb and middle
-  '9': [1, 1, 0, 0, 0],    // Thumb and index touch
-  '10': [1, 1, 1, 1, 1]    // Thumbs up or all fingers
+  '8': [0, 1, 0, 1, 1],    // Thumb and middle
+  '9': [1, 1, 1, 0, 0],    // Thumb and index touch
+  '10': [1, 0, 0, 0, 0]    // Thumbs up or all fingers
 };
 
 // ----------------------------------------------------------------------------
@@ -559,52 +679,6 @@ async function analyzeGesture(recordedFrames, targetLabel) {
   return score;
 }
 
-// ============================================================================
-// LEGACY FUNCTIONS (kept for compatibility, not used by main system)
-// ============================================================================
-
-/*
-// Old LLM-based analysis - commented out but kept for reference
-async function analyzeWithLLM_OLD(frames, label) {
-  // This used to call an external API for analysis
-  // Now we use local pattern matching which is faster and more reliable
-}
-*/
-
-/*
-// Old complex feature extraction - commented out
-function extractConcreteFeaturesFromFrames_OLD(frames) {
-  // This had many parameters and was hard to tune
-  // The new extractFingerStates() is simpler and works better
-}
-*/
-
-/*
-// Old scoring function - commented out  
-function scoreGestureByRules_OLD(features, targetLabel) {
-  // This had complex rules that were hard to maintain
-  // The new calculateAccuracy() is simpler and more generous
-}
-*/
-
-// ============================================================================
-// UNUSED LEGACY FUNCTIONS - Kept for reference, can be deleted
-// ============================================================================
-
-/*
-// Fallback pattern-based analysis - no longer needed
-function fallbackPatternAnalysis(recordedFrames, targetLabel) {
-  // The new system handles all cases
-  return 50;
-}
-
-// Old feature extraction - replaced by extractFingerStates()
-function extractGestureFeatures(frames) {
-  // No longer used
-  return null;
-}
-*/
-
 // Submit Gesture Function
 async function submitGesture() {
   if (STATE.recordedFrames.length === 0) {
@@ -643,10 +717,17 @@ async function submitGesture() {
 
 // Start Lesson
 function startLesson(mode) {
+  console.log(`🎯 Starting lesson: ${mode}`);
+  
+  // Reset state for new lesson
   STATE.currentMode = mode;
-  STATE.currentIndex = 0;
+  STATE.currentIndex = 0;  // Always start from first item
   STATE.recordedFrames = [];
   STATE.frameCounter = 0;
+
+  const signs = mode === 'alphabet' ? ASL_ALPHABET : ASL_NUMBERS;
+  console.log(`📋 Total signs to learn: ${signs.length}`);
+  console.log(`📋 Signs: ${signs.map(s => s.letter || s.number).join(', ')}`);
 
   document.getElementById('modeSelection').classList.add('hidden');
   document.getElementById('learningInterface').classList.remove('hidden');
@@ -658,19 +739,26 @@ function startLesson(mode) {
 function loadSign() {
   const isAlphabet = STATE.currentMode === 'alphabet';
   const signs = isAlphabet ? ASL_ALPHABET : ASL_NUMBERS;
+  
+  // Safety check - ensure index is valid
+  if (STATE.currentIndex < 0) STATE.currentIndex = 0;
+  if (STATE.currentIndex >= signs.length) STATE.currentIndex = signs.length - 1;
+  
   const currentSign = signs[STATE.currentIndex];
   const label = isAlphabet ? currentSign.letter : currentSign.number;
+
+  console.log(`📖 Loading sign: ${label} (index ${STATE.currentIndex} of ${signs.length})`);
 
   document.getElementById('lessonTitle').textContent = `Learning: ${label}`;
   document.getElementById('lessonCounter').textContent = `${STATE.currentIndex + 1}/${signs.length}`;
   
-  // Display actual image for alphabet letters
+  // Display actual image for both alphabet letters and numbers
   const signImageEl = document.getElementById('signImage');
   if (isAlphabet) {
-    signImageEl.innerHTML = `<img src="images/${label}.jpeg" alt="${label}" style="max-width: 100%; height: auto; border-radius: 8px;">`;
+    signImageEl.innerHTML = `<img src="images/${label}.png" alt="ASL sign for ${label}" style="max-width: 100%; height: auto; border-radius: 8px;" onerror="this.onerror=null; this.parentElement.innerHTML='<span style=\\'font-size:4rem\\'>${getSignEmoji(label)}</span>';">`;
   } else {
-    // For numbers, still use emoji for now
-    signImageEl.textContent = getSignEmoji(label);
+    // For numbers, load images from images/1.png, images/2.png, etc.
+    signImageEl.innerHTML = `<img src="images/${label}.png" alt="ASL sign for ${label}" style="max-width: 100%; height: auto; border-radius: 8px;" onerror="this.onerror=null; this.parentElement.innerHTML='<span style=\\'font-size:4rem\\'>${getSignEmoji(label)}</span>';">`;
   }
   
   document.getElementById('signDescription').innerHTML = `
@@ -690,17 +778,34 @@ function loadSign() {
   updateProgressBar();
 }
 
-// Next Sign
+// Next Sign - Navigate sequentially through all signs
 function nextSign() {
   const isAlphabet = STATE.currentMode === 'alphabet';
   const signs = isAlphabet ? ASL_ALPHABET : ASL_NUMBERS;
-
-  if (STATE.currentIndex < signs.length - 1) {
-    STATE.currentIndex++;
+  const totalSigns = signs.length;
+  
+  console.log(`📍 Current index: ${STATE.currentIndex}, Total: ${totalSigns}`);
+  
+  // Move to next sign
+  const nextIndex = STATE.currentIndex + 1;
+  
+  if (nextIndex < totalSigns) {
+    STATE.currentIndex = nextIndex;
+    console.log(`➡️ Moving to index ${STATE.currentIndex}: ${isAlphabet ? signs[STATE.currentIndex].letter : signs[STATE.currentIndex].number}`);
     loadSign();
   } else {
-    alert(`🏆 Lesson Complete!`);
+    // Completed all signs
+    alert(`🏆 Lesson Complete! You've practiced all ${totalSigns} ${isAlphabet ? 'letters' : 'numbers'}!`);
     backToMenu();
+  }
+}
+
+// Previous Sign - Go back to previous sign
+function prevSign() {
+  if (STATE.currentIndex > 0) {
+    STATE.currentIndex--;
+    console.log(`⬅️ Moving back to index ${STATE.currentIndex}`);
+    loadSign();
   }
 }
 
@@ -729,19 +834,88 @@ function closeProgress() {
 
 // Update Progress Stats
 async function updateProgressStats() {
-  let alphabetCorrect = 0, numbersCorrect = 0;
-  for (const key in STATE.userProgress) {
-    if (key.startsWith('a_') && STATE.userProgress[key].correct > 0) alphabetCorrect++;
-    if (key.startsWith('n_') && STATE.userProgress[key].correct > 0) numbersCorrect++;
+  // Track which specific letters and numbers are completed
+  const completedLetters = [];
+  const completedNumbers = [];
+  
+  // Check all 26 letters A-Z
+  for (let i = 0; i < 26; i++) {
+    const letter = String.fromCharCode(65 + i); // A=65 in ASCII
+    const key = `a_${letter}`;
+    if (STATE.userProgress[key] && STATE.userProgress[key].correct > 0) {
+      completedLetters.push(letter);
+    }
   }
+  
+  // Check all 10 numbers 1-10
+  for (let i = 1; i <= 10; i++) {
+    const key = `n_${i}`;
+    if (STATE.userProgress[key] && STATE.userProgress[key].correct > 0) {
+      completedNumbers.push(i.toString());
+    }
+  }
+  
+  const alphabetCorrect = completedLetters.length;
+  const numbersCorrect = completedNumbers.length;
 
+  // Update percentage displays
   document.getElementById('alphabetPercent').textContent = Math.round((alphabetCorrect / 26) * 100) + '%';
-  document.getElementById('alphabetDetails').textContent = `${alphabetCorrect}/26 learned`;
   document.getElementById('numbersPercent').textContent = Math.round((numbersCorrect / 10) * 100) + '%';
-  document.getElementById('numbersDetails').textContent = `${numbersCorrect}/10 learned`;
+  
+  // Update details with explicit list of completed items
+  if (alphabetCorrect > 0) {
+    document.getElementById('alphabetDetails').innerHTML = 
+      `<strong>${alphabetCorrect}/26 learned</strong><br>` +
+      `<span style="font-size: 0.9em; color: #4CAF50;">Completed: ${completedLetters.join(', ')}</span>`;
+  } else {
+    document.getElementById('alphabetDetails').textContent = '0/26 learned';
+  }
+  
+  if (numbersCorrect > 0) {
+    document.getElementById('numbersDetails').innerHTML = 
+      `<strong>${numbersCorrect}/10 learned</strong><br>` +
+      `<span style="font-size: 0.9em; color: #4CAF50;">Completed: ${completedNumbers.join(', ')}</span>`;
+  } else {
+    document.getElementById('numbersDetails').textContent = '0/10 learned';
+  }
+  
+  // Update achievements list
+  updateAchievements(alphabetCorrect, numbersCorrect, completedLetters, completedNumbers);
 
   // Use LLM to generate encouraging progress message
   await generateProgressMessage(alphabetCorrect, numbersCorrect);
+}
+
+// Update achievements based on progress
+function updateAchievements(alphabetCount, numberCount, letters, numbers) {
+  const achievementsList = document.getElementById('achievementsList');
+  if (!achievementsList) return;
+  
+  const achievements = [];
+  
+  // Alphabet achievements
+  if (alphabetCount >= 1) achievements.push('🌟 First Letter - Learned your first letter!');
+  if (alphabetCount >= 5) achievements.push('📝 Getting Started - Learned 5 letters');
+  if (alphabetCount >= 10) achievements.push('📚 Alphabet Learner - Learned 10 letters');
+  if (alphabetCount >= 20) achievements.push('🎓 Almost There - Learned 20 letters');
+  if (alphabetCount >= 26) achievements.push('🏆 Alphabet Master - Completed all 26 letters!');
+  
+  // Number achievements
+  if (numberCount >= 1) achievements.push('1️⃣ First Number - Learned your first number!');
+  if (numberCount >= 5) achievements.push('🔢 Halfway Numbers - Learned 5 numbers');
+  if (numberCount >= 10) achievements.push('🏆 Number Master - Completed all 10 numbers!');
+  
+  // Total achievements
+  const total = alphabetCount + numberCount;
+  if (total >= 36) achievements.push('👑 ASL Champion - Mastered everything!');
+  
+  if (achievements.length > 0) {
+    achievementsList.innerHTML = achievements.map(a => 
+      `<div style="padding: 8px; margin: 4px 0; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border-radius: 8px; font-size: 0.9em;">${a}</div>`
+    ).join('');
+  } else {
+    achievementsList.innerHTML = '<p style="color: #888;">Complete signs to earn achievements!</p>';
+  }
 }
 
 // Generate Progress Message using LLM
