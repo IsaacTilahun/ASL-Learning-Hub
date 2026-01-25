@@ -109,8 +109,6 @@ npx serve
 
 <div align="center">
 
-Made with ❤️ by [@isaact06](https://github.com/isaact06)
-
 </div>
 
 ### Technologies Used
