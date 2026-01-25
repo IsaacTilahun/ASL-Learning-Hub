@@ -116,6 +116,10 @@ async function startCamera() {
     await new Promise(resolve => {
       STATE.videoElement.onloadedmetadata = () => {
         STATE.videoElement.play();
+        // Set canvas dimensions to match video
+        STATE.canvasElement.width = STATE.videoElement.videoWidth;
+        STATE.canvasElement.height = STATE.videoElement.videoHeight;
+        console.log(`✓ Canvas set to ${STATE.canvasElement.width}x${STATE.canvasElement.height}`);
         resolve();
       };
     });
