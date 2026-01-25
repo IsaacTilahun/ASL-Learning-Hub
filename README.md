@@ -1,62 +1,117 @@
+<div align="center">
+
 # 🤟 ASL Learning Hub
 
-An interactive, AI-powered web application for learning American Sign Language (ASL) alphabet and numbers with real-time hand tracking and intelligent feedback.
+**Learn American Sign Language with AI-powered hand tracking**
+
+[![HTML5](https://img.shields.io/badge/HTML5-E34F26?style=flat-square&logo=html5&logoColor=white)](https://developer.mozilla.org/en-US/docs/Web/HTML)
+[![CSS3](https://img.shields.io/badge/CSS3-1572B6?style=flat-square&logo=css3&logoColor=white)](https://developer.mozilla.org/en-US/docs/Web/CSS)
+[![JavaScript](https://img.shields.io/badge/JavaScript-F7DF1E?style=flat-square&logo=javascript&logoColor=black)](https://developer.mozilla.org/en-US/docs/Web/JavaScript)
+[![MediaPipe](https://img.shields.io/badge/MediaPipe-0097A7?style=flat-square&logo=google&logoColor=white)](https://mediapipe.dev/)
+
+[Features](#features) · [Setup](#setup) · [Usage](#usage) · [Tech Stack](#tech-stack)
+
+</div>
+
+---
 
 ## Features
 
-✨ **Interactive Learning**
-- Learn ASL Alphabet (A-Z)
-- Learn ASL Numbers (1-10)
-- Real-time hand tracking with MediaPipe
-- AI-based gesture recognition with accuracy scoring
+🔤 **Learn ASL Alphabet & Numbers** — Complete A-Z and 1-10 courses with visual guides
 
-🎮 **Engaging Gamification**
-- Confidence meter for hand detection quality
-- Accuracy percentage feedback
-- Progress tracking and statistics
-- Achievement system with badges
-- Celebration animations on success
+🤖 **Real-time Hand Tracking** — MediaPipe-powered gesture recognition with instant feedback
 
-📊 **Progress Tracking**
-- Track learning progress for each sign
-- Overall accuracy percentage
-- Statistics for alphabet and numbers
-- Achievement unlock system
-- Local storage persistence
+📊 **Progress Tracking** — Track accuracy, unlock achievements, auto-saved locally
 
-🎨 **Beautiful UI**
-- Modern, responsive design
-- Dark theme with gradient accents
-- Smooth animations and transitions
-- Mobile-friendly layout
-- Real-time visual feedback
+🎨 **Modern Dark UI** — Sleek space-themed design with smooth animations
 
-## How to Use
+---
 
-### 1. **Start the Application**
-- Open `index.html` in a modern web browser
-- Allow camera permissions when prompted
+## Setup
 
-### 2. **Choose a Learning Mode**
-- **Alphabet (A-Z)**: Learn all 26 letters of ASL alphabet
-- **Numbers (1-10)**: Learn numbers from 1 to 10
-- **Progress Tracker**: View your learning statistics and achievements
+### Requirements
+- Modern browser (Chrome recommended)
+- Webcam
+- Good lighting
 
-### 3. **Learn a Sign**
-1. Watch the target sign display with instructions
-2. Position your hand in front of the camera
-3. Click "Record Gesture" when ready
-4. Click "Stop Recording" after showing the sign
-5. Click "Submit" to check your accuracy
-6. Get instant feedback with tips for improvement
+### Quick Start
 
-### 4. **Track Progress**
-- View your accuracy percentage in the header
-- Check detailed statistics in the Progress Tracker
-- Unlock achievements as you learn
-- View what you've mastered vs. what needs practice
+```bash
+# Clone the repo
+git clone https://github.com/isaact06/asl-learning-hub.git
+cd asl-learning-hub
 
-## Technical Details
+# Open directly
+start index.html        # Windows
+open index.html         # macOS
+```
+
+Or use a local server:
+```bash
+# Python
+python -m http.server 8000
+
+# Node.js
+npx serve
+```
+
+---
+
+## Usage
+
+1. **Choose a mode** — Alphabet (A-Z) or Numbers (1-10)
+2. **Start camera** — Allow webcam access when prompted
+3. **Practice signs** — Follow the visual guide and hints
+4. **Record & submit** — Get instant accuracy feedback
+5. **Track progress** — View stats and unlock achievements
+
+### Feedback Guide
+| Score | Meaning |
+|-------|---------|
+| 🟢 80%+ | Excellent |
+| 🟡 50-79% | Good, minor adjustments needed |
+| 🔴 <50% | Try again |
+
+---
+
+## Tech Stack
+
+| Tech | Purpose |
+|------|---------|
+| **HTML5** | Structure & video/canvas elements |
+| **CSS3** | Styling, animations, dark theme |
+| **JavaScript** | Application logic (vanilla, no frameworks) |
+| **MediaPipe Hands** | Real-time hand tracking AI |
+| **LocalStorage** | Progress persistence |
+
+---
+
+## Project Structure
+
+```
+├── index.html      # Main app
+├── styles.css      # Styling
+├── app.js          # Core logic
+└── images/         # ASL reference images (A-Z, 1-10)
+```
+
+---
+
+## Contributing
+
+1. Fork it
+2. Create your branch (`git checkout -b feature/cool-feature`)
+3. Commit changes (`git commit -m 'Add cool feature'`)
+4. Push (`git push origin feature/cool-feature`)
+5. Open a PR
+
+---
+
+<div align="center">
+
+Made with ❤️ by [@isaact06](https://github.com/isaact06)
+
+</div>
 
 ### Technologies Used
 - **MediaPipe Hands**: Google's ML solution for hand tracking
