@@ -75,7 +75,9 @@ Everything runs client-side. Your webcam feed never leaves your browser, and pro
 ## Built by
 
 Isaac Tilahun
+
 Chukwuka Okwusiuno
+
 Mohammad Saeed
 
 ## License
