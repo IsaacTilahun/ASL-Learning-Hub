@@ -25,7 +25,7 @@ It's a simple heuristic, not a trained model, so it's upfront about where it str
 You need to serve this over HTTP — opening `index.html` directly won't work, since browsers block camera access and ES modules on `file://`.
 
 ```bash
-git clone https://github.com/isaact06/asl-learning-hub.git
+git clone https://github.com/IsaacTilahun/asl-learning-hub.git
 cd asl-learning-hub
 python -m http.server 8000
 ```
@@ -78,6 +78,3 @@ Isaac Tilahun
 Chukwuka Okwusiuno
 Mohammad Saeed
 
-## License
-
-No license yet — feel free to open an issue if you'd like one added.
