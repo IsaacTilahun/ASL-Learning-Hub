@@ -1,246 +1,83 @@
-<div align="center">
+# ASL Learning Hub
 
-# 🤟 ASL Learning Hub
+A browser-based tool for practicing the ASL alphabet and numbers 1–10. It turns your webcam into a practice partner: hold up a sign, and it tells you how close you are.
 
-**Learn American Sign Language with AI-powered hand tracking**
+We built this at a hackathon and cleaned it up afterward. No installs, no accounts — clone it, serve it, and it runs.
 
-[![HTML5](https://img.shields.io/badge/HTML5-E34F26?style=flat-square&logo=html5&logoColor=white)](https://developer.mozilla.org/en-US/docs/Web/HTML)
-[![CSS3](https://img.shields.io/badge/CSS3-1572B6?style=flat-square&logo=css3&logoColor=white)](https://developer.mozilla.org/en-US/docs/Web/CSS)
-[![JavaScript](https://img.shields.io/badge/JavaScript-F7DF1E?style=flat-square&logo=javascript&logoColor=black)](https://developer.mozilla.org/en-US/docs/Web/JavaScript)
-[![MediaPipe](https://img.shields.io/badge/MediaPipe-0097A7?style=flat-square&logo=google&logoColor=white)](https://mediapipe.dev/)
+## How it works
 
-[Features](#features) · [Setup](#setup) · [Usage](#usage) · [Tech Stack](#tech-stack)
+MediaPipe reads 21 points on your hand from the webcam feed and draws a skeleton overlay in real time. From those points we work out which fingers are extended versus curled, compare that against the pattern expected for the sign you're on, and turn the match into a score. Hold a decent shape and you'll see the confidence meter respond before you even record.
 
-</div>
+To attempt a sign: record a few seconds of your hand, hit submit, and get a percentage back. Score 50% or better and it's marked learned.
 
----
+It's a simple heuristic, not a trained model, so it's upfront about where it struggles — signs that differ mainly in finger *curvature* (C vs. O) or *motion* (J, Z) rather than which fingers are up can come out looking similar. Good next step for anyone picking this up.
 
 ## Features
 
-🔤 **Learn ASL Alphabet & Numbers** — Complete A-Z and 1-10 courses with visual guides
+- Full ASL alphabet (A–Z) and numbers (1–10), each with a reference photo and hand-position hints
+- Live hand tracking with a skeleton overlay, powered by MediaPipe Hands
+- A confidence meter that grades your hand shape as you move, before you commit to an attempt
+- Progress tracking and achievements, saved locally in your browser
+- Optional AI-generated encouragement messages on your progress screen (see below)
 
-🤖 **Real-time Hand Tracking** — MediaPipe-powered gesture recognition with instant feedback
+## Running it locally
 
-📊 **Progress Tracking** — Track accuracy, unlock achievements, auto-saved locally
-
-🎨 **Modern Dark UI** — Sleek space-themed design with smooth animations
-
----
-
-## Setup
-
-### Requirements
-- Modern browser (Chrome recommended)
-- Webcam
-- Good lighting
-
-### Quick Start
+You need to serve this over HTTP — opening `index.html` directly won't work, since browsers block camera access and ES modules on `file://`.
 
 ```bash
-# Clone the repo
 git clone https://github.com/isaact06/asl-learning-hub.git
 cd asl-learning-hub
-
-# Open directly
-start index.html        # Windows
-open index.html         # macOS
-```
-
-Or use a local server:
-```bash
-# Python
 python -m http.server 8000
-
-# Node.js
-npx serve
 ```
 
----
+(or `npx serve` if you'd rather use Node)
 
-## Usage
+Then open `localhost:8000` and allow camera access when it asks. Chrome tends to give the most reliable hand tracking.
 
-1. **Choose a mode** — Alphabet (A-Z) or Numbers (1-10)
-2. **Start camera** — Allow webcam access when prompted
-3. **Practice signs** — Follow the visual guide and hints
-4. **Record & submit** — Get instant accuracy feedback
-5. **Track progress** — View stats and unlock achievements
+### Optional: AI encouragement messages
 
-### Feedback Guide
-| Score | Meaning |
-|-------|---------|
-| 🟢 80%+ | Excellent |
-| 🟡 50-79% | Good, minor adjustments needed |
-| 🔴 <50% | Try again |
+The progress screen can show a short AI-written encouragement line instead of a static one. It's off by default and needs no setup to use the app normally — but if you want to turn it on, drop an API key for an OpenAI-compatible endpoint into your browser console:
 
----
-
-## Tech Stack
-
-| Tech | Purpose |
-|------|---------|
-| **HTML5** | Structure & video/canvas elements |
-| **CSS3** | Styling, animations, dark theme |
-| **JavaScript** | Application logic (vanilla, no frameworks) |
-| **MediaPipe Hands** | Real-time hand tracking AI |
-| **LocalStorage** | Progress persistence |
-
----
-
-## Project Structure
-
-```
-├── index.html      # Main app
-├── styles.css      # Styling
-├── app.js          # Core logic
-└── images/         # ASL reference images (A-Z, 1-10)
+```js
+localStorage.setItem('encouragementApiKey', 'your-key-here')
 ```
 
----
+The endpoint and model are set in `js/config.js`. Don't put a real key in that file directly — this is a static site, so anything committed there ships to every visitor.
 
-## Contributing
+## Project structure
 
-1. Fork it
-2. Create your branch (`git checkout -b feature/cool-feature`)
-3. Commit changes (`git commit -m 'Add cool feature'`)
-4. Push (`git push origin feature/cool-feature`)
-5. Open a PR
-
----
-
-<div align="center">
-
-</div>
-
-### Technologies Used
-- **MediaPipe Hands**: Google's ML solution for hand tracking
-- **Canvas API**: For drawing hand landmarks on video
-- **Local Storage**: For persistent progress tracking
-- **CSS Grid/Flexbox**: Responsive layout system
-- **Vanilla JavaScript**: Core application logic
-
-### File Structure
 ```
-ASL/
-├── index.html      # Main HTML file
-├── styles.css      # All styling and animations
-├── app.js         # Core application logic
-└── README.md      # This file
+index.html              menu, lesson view, and modals
+css/                     base styles, layout, components, animations, responsive
+js/
+  main.js                entry point — wires everything together
+  config.js               tracking, scoring, and API settings
+  data/                   sign reference data and finger patterns
+  tracking/               camera handling, MediaPipe loop, canvas overlay
+  recognition/            finger detection and scoring logic
+  lesson/                 lesson flow — navigation, recording, submitting
+  ui/                     DOM handling, feedback, modals
+  storage/                localStorage progress
+  services/               optional encouragement API client
+images/                  reference photos for A–Z and 1–10
 ```
 
-## Browser Requirements
+## Privacy
 
-- Modern browser with WebRTC support (Chrome, Firefox, Safari, Edge)
-- Webcam/camera device
-- Stable internet connection (for MediaPipe CDN resources)
+Everything runs client-side. Your webcam feed never leaves your browser, and progress is stored in `localStorage` on your own machine — clear your browser data and it's gone. The only thing that ever leaves your device is the count of signs you've learned, and only if you've opted into the AI encouragement feature above.
 
-## Features Explained
+## Built with
 
-### Hand Tracking
-- Uses MediaPipe Hands for real-time detection
-- Tracks 21 hand landmarks per hand
-- Shows confidence level while recording
-- Visual feedback with hand skeleton overlay
+- [MediaPipe Hands](https://google.github.io/mediapipe/solutions/hands) for hand landmark tracking — does the heavy lifting here
+- Vanilla JavaScript, HTML, and CSS — no framework, no build step
+- Google Fonts (Bricolage Grotesque, Hanken Grotesk)
 
-### Gesture Analysis
-- Analyzes hand position and finger configuration
-- Provides accuracy scoring (0-100%)
-- Tracks confidence for each frame
-- Compares against ASL sign database
+## Built by
 
-### Learning Tips
-- Each sign comes with helpful hints
-- Tips focus on key positioning elements
-- Progressive difficulty through practice
-- Instant feedback for improvement
-
-### Achievements
-- 🎯 First Sign: Make your first correct sign
-- ⭐ 5 Signs: Learn 5 signs correctly
-- ✨ 10 Signs: Learn 10 signs correctly
-- 🔤 Alphabet Done: Complete all 26 letters
-- 🔢 Numbers Done: Complete all 10 numbers
-- 💯 Perfect: Maintain 90% accuracy
-
-## Keyboard Shortcuts
-
-- **Esc**: Back to main menu
-- **Space**: Record/Stop gesture
-- **Enter**: Submit gesture
-
-## Tips for Best Results
-
-1. **Lighting**: Ensure good lighting for better hand detection
-2. **Distance**: Position your hand 1-2 feet from the camera
-3. **Clarity**: Make clear, distinct hand shapes
-4. **Stability**: Hold signs steady for better recognition
-5. **Practice**: Repeat signs multiple times for better accuracy
-
-## Data Privacy
-
-- All progress is stored locally in your browser
-- No data is sent to external servers
-- Clear browser data to reset progress
-- Each device maintains separate progress
-
-## Troubleshooting
-
-### Camera Not Working
-- Check browser permissions for camera access
-- Try a different browser
-- Restart the browser and application
-
-### Hand Not Detecting
-- Ensure adequate lighting
-- Position hand clearly in frame
-- Try different angles
-- Check camera quality
-
-### Low Accuracy Scores
-- Ensure signs are clear and distinct
-- Hold positions steady
-- Check distance from camera
-- Review sign instructions carefully
-
-## Future Enhancements
-
-- [ ] Machine learning model training on user gestures
-- [ ] Multiplayer learning challenges
-- [ ] Video tutorials for each sign
-- [ ] Advanced sign phrases
-- [ ] Mobile app version
-- [ ] Offline mode support
-- [ ] Sign language by region variants
-- [ ] Leaderboard and competitions
-
-## Contributing
-
-To improve this application:
-1. Add more ASL signs and phrases
-2. Improve gesture recognition algorithms
-3. Enhance UI/UX design
-4. Add more languages
-5. Create video tutorials
+Isaac Tilahun
+Chukwuka Okwusiuno
+Mohammad Saeed
 
 ## License
 
-This project is open source and available for educational purposes.
-
-## Resources
-
-- [MediaPipe Hands Documentation](https://google.github.io/mediapipe/solutions/hands)
-- [ASL Dictionary](https://www.handspeak.com/)
-- [SignSchool ASL Resources](https://www.signschool.com/)
-
-## Support
-
-For issues or suggestions, please check the following:
-1. Ensure your browser is up to date
-2. Clear browser cache and cookies
-3. Check console for error messages
-4. Try a different browser or device
-
----
-
-**Happy Learning! 🤟**
-
-Made with ❤️ for the Deaf and Hard of Hearing community
+No license yet — feel free to open an issue if you'd like one added.

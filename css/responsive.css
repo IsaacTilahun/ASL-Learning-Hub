@@ -1,0 +1,82 @@
+/* Breakpoint overrides, widest first. */
+
+@media (max-width: 1024px) {
+    .lesson-container {
+        grid-template-columns: 1fr;
+    }
+
+    .progress-stats {
+        grid-template-columns: 1fr;
+    }
+}
+
+@media (max-width: 768px) {
+    .app-header {
+        padding: 1.25rem 1.25rem;
+        position: static;
+    }
+
+    .main-content {
+        padding: 2rem 1.25rem 3rem;
+    }
+
+    .mode-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .modal-content {
+        padding: 1.5rem;
+    }
+
+    .troubleshooting-tips ul {
+        columns: 1;
+    }
+
+    .mode-selection {
+        gap: 2.5rem;
+    }
+
+    .specimen-grid {
+        grid-template-columns: repeat(7, 1fr);
+    }
+
+    .landing-hero {
+        grid-template-columns: 1fr;
+        row-gap: 1.75rem;
+    }
+
+    .landing-stat {
+        grid-column: 1;
+        grid-row: auto;
+        align-items: flex-start;
+    }
+}
+
+@media (max-width: 480px) {
+    .lesson-content {
+        padding: 1.25rem;
+    }
+
+    .lesson-header {
+        flex-wrap: wrap;
+        justify-content: space-between;
+    }
+
+    .lesson-header h2 {
+        order: 3;
+        flex-basis: 100%;
+        text-align: left;
+    }
+
+    .lesson-actions {
+        grid-template-columns: 1fr;
+    }
+
+    .video-wrapper {
+        aspect-ratio: 1 / 1;
+    }
+
+    .specimen-grid {
+        grid-template-columns: repeat(5, 1fr);
+    }
+}

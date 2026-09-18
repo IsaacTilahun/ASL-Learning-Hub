@@ -4,50 +4,81 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>ASL Learning Hub - Learn Sign Language</title>
-    <link rel="stylesheet" href="styles.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400..800&family=Hanken+Grotesk:wght@400;500;600;700&display=swap">
+    <link rel="stylesheet" href="css/base.css">
+    <link rel="stylesheet" href="css/layout.css">
+    <link rel="stylesheet" href="css/components.css">
+    <link rel="stylesheet" href="css/animations.css">
+    <link rel="stylesheet" href="css/responsive.css">
 </head>
 <body>
     <div class="app-container">
-        <!-- Header -->
         <header class="app-header">
             <div class="header-content">
                 <h1>ASL Learning Hub</h1>
-                <h2>Master Sign Language with AI Feedback</h2>
+                <h2 class="subtitle">Master Sign Language with AI Feedback</h2>
             </div>
         </header>
 
         <div class="main-content">
-            <!-- Mode Selection -->
             <div id="modeSelection" class="mode-selection">
-                <h2>Choose a Learning Mode</h2>
-                <div class="mode-grid">
-                    <button class="mode-btn" onclick="startLesson('alphabet')">
-                        <span class="mode-icon">🔤</span>
-                        <span class="mode-title">Alphabet (A-Z)</span>
-                        <span class="mode-desc">Learn ASL alphabet</span>
-                    </button>
-                    <button class="mode-btn" onclick="startLesson('numbers')">
-                        <span class="mode-icon">🔢</span>
-                        <span class="mode-title">Numbers (1-10)</span>
-                        <span class="mode-desc">Learn ASL numbers</span>
-                    </button>
-                    <button class="mode-btn" onclick="showProgress()">
-                        <span class="mode-icon">📊</span>
-                        <span class="mode-title">Progress Tracker</span>
-                        <span class="mode-desc">View your stats</span>
-                    </button>
-                    <button class="mode-btn" onclick="showAbout()">
-                        <span class="mode-icon">ℹ️</span>
-                        <span class="mode-title">About ASL Hub</span>
-                        <span class="mode-desc">Learn more about us</span>
-                    </button>
+                <div class="landing-hero">
+                    <p class="landing-eyebrow">A-Z &middot; 1-10 &middot; 36 signs</p>
+                    <h2 class="landing-headline">Learn every handshape, one at a time.</h2>
+                    <p class="landing-lede">Your webcam tracks 21 points on your hand and
+                        scores the shape you make against the sign you are aiming for.</p>
+                    <p class="landing-stat">
+                        <span class="landing-stat-label">Learned</span>
+                        <span id="landingCount" class="landing-stat-value">0/36</span>
+                    </p>
                 </div>
+
+                <section class="landing-section">
+                    <h3 class="section-label">Choose a Learning Mode</h3>
+                    <div class="mode-grid">
+                        <button class="mode-btn" data-mode="alphabet">
+                            <span class="mode-icon">🔤</span>
+                            <span class="mode-title">Alphabet (A-Z)</span>
+                            <span class="mode-desc">Learn ASL alphabet</span>
+                        </button>
+                        <button class="mode-btn" data-mode="numbers">
+                            <span class="mode-icon">🔢</span>
+                            <span class="mode-title">Numbers (1-10)</span>
+                            <span class="mode-desc">Learn ASL numbers</span>
+                        </button>
+                        <button class="mode-btn" data-action="progress">
+                            <span class="mode-icon">📊</span>
+                            <span class="mode-title">Progress Tracker</span>
+                            <span class="mode-desc">View your stats</span>
+                        </button>
+                        <button class="mode-btn" data-action="about">
+                            <span class="mode-icon">ℹ️</span>
+                            <span class="mode-title">About ASL Learning Hub</span>
+                            <span class="mode-desc">Learn more about us</span>
+                        </button>
+                    </div>
+                </section>
+
+                <section class="landing-section">
+                    <h3 class="section-label">The full set</h3>
+                    <p class="section-note">Pick any sign to jump straight to it.</p>
+                    <div class="specimen">
+                        <div class="specimen-group">
+                            <p class="specimen-label">Alphabet</p>
+                            <div id="specimenAlphabet" class="specimen-grid" data-set="alphabet"></div>
+                        </div>
+                        <div class="specimen-group">
+                            <p class="specimen-label">Numbers</p>
+                            <div id="specimenNumbers" class="specimen-grid" data-set="numbers"></div>
+                        </div>
+                    </div>
+                </section>
             </div>
 
-            <!-- Learning Interface -->
             <div id="learningInterface" class="learning-interface hidden">
                 <div class="lesson-container">
-                    <!-- Left Side: Video Feed -->
                     <div class="video-section">
                         <div class="video-wrapper">
                             <video id="webcam" class="video-feed" playsinline></video>
@@ -60,8 +91,7 @@
                             <button id="toggleCamera" class="control-btn">📷 Start Camera</button>
                             <button id="recordGesture" class="control-btn record-btn" disabled>⏺️ Record Gesture</button>
                         </div>
-                        
-                        <!-- Troubleshooting Tips -->
+
                         <div class="troubleshooting-tips">
                             <details>
                                 <summary>💡 Hand Not Detected? Try These:</summary>
@@ -70,7 +100,6 @@
                                     <li>✓ Move hand into the center of frame</li>
                                     <li>✓ Keep hand 1-2 feet from camera</li>
                                     <li>✓ Make clear hand shapes (not blurry)</li>
-                                    <li>✓ Check browser console (F12) for errors</li>
                                     <li>✓ Try refreshing the page</li>
                                     <li>✓ Try a different browser (Chrome works best)</li>
                                 </ul>
@@ -78,26 +107,23 @@
                         </div>
                     </div>
 
-                    <!-- Right Side: Lesson Content -->
                     <div class="lesson-content">
                         <div class="lesson-header">
-                            <button class="back-btn" onclick="backToMenu()">← Back</button>
+                            <button id="backBtn" class="back-btn">← Back</button>
                             <h2 id="lessonTitle">Learning: A</h2>
                             <span id="lessonCounter" class="lesson-counter">1/26</span>
                         </div>
 
-                        <!-- Target Sign Display -->
                         <div class="target-section">
                             <h3>Target Sign</h3>
                             <div class="target-display">
                                 <div class="sign-image" id="signImage">🤟</div>
                                 <div class="sign-description" id="signDescription">
-                                    <p>Watch the animation or image to see the correct sign</p>
+                                    <p>Watch the image to see the correct hand shape</p>
                                 </div>
                             </div>
                         </div>
 
-                        <!-- Feedback Section -->
                         <div class="feedback-section">
                             <div class="feedback-box" id="feedbackBox">
                                 <p class="feedback-placeholder">Make the sign to get feedback</p>
@@ -111,13 +137,11 @@
                             </div>
                         </div>
 
-                        <!-- Action Buttons -->
                         <div class="lesson-actions">
-                            <button id="nextBtn" class="action-btn secondary" onclick="nextSign()">Next →</button>
-                            <button id="submitBtn" class="action-btn primary" onclick="submitGesture()" disabled>Submit</button>
+                            <button id="nextBtn" class="action-btn secondary">Next →</button>
+                            <button id="submitBtn" class="action-btn primary" disabled>Submit</button>
                         </div>
 
-                        <!-- Progress Bar -->
                         <div class="progress-bar-section">
                             <div class="progress-bar">
                                 <div class="progress-fill" id="lessonProgress"></div>
@@ -127,12 +151,11 @@
                 </div>
             </div>
 
-            <!-- Progress Modal -->
             <div id="progressModal" class="modal hidden">
                 <div class="modal-content">
-                    <button class="close-btn" onclick="closeProgress()">×</button>
+                    <button class="close-btn" aria-label="Close">×</button>
                     <h2>📊 Your Progress</h2>
-                    <div id="progressMessage" class="progress-message" style="font-style: italic; color: #4CAF50; margin-bottom: 20px; font-size: 1.1em; text-align: center;"></div>
+                    <div id="progressMessage" class="progress-message"></div>
                     <div class="progress-stats">
                         <div class="progress-card">
                             <h4>Alphabet Progress</h4>
@@ -155,18 +178,48 @@
                     </div>
                 </div>
             </div>
+
+            <div id="aboutModal" class="modal hidden">
+                <div class="modal-content">
+                    <button class="close-btn" aria-label="Close">×</button>
+                    <h2>About ASL Learning Hub</h2>
+                    <div class="about-body">
+                        <h3>Interactive Learning Platform</h3>
+                        <p>A web app for practising the American Sign Language alphabet and
+                           numbers, with real-time hand tracking and instant feedback.</p>
+
+                        <h3>Key Features</h3>
+                        <ul>
+                            <li>Real-time hand tracking with MediaPipe</li>
+                            <li>Gesture scoring against per-sign finger patterns</li>
+                            <li>Live confidence meter while you practise</li>
+                            <li>Progress tracking and achievements</li>
+                            <li>Progress saved locally in your browser</li>
+                        </ul>
+
+                        <h3>Learning Modes</h3>
+                        <ul>
+                            <li><strong>Alphabet (A-Z):</strong> all 26 letters of the ASL alphabet</li>
+                            <li><strong>Numbers (1-10):</strong> the numbers 1 through 10</li>
+                            <li><strong>Progress Tracker:</strong> your stats and achievements</li>
+                        </ul>
+
+                        <h3>How to Get Started</h3>
+                        <ol>
+                            <li>Choose a learning mode</li>
+                            <li>Start the camera and position your hand in frame</li>
+                            <li>Record your gesture, then submit it for a score</li>
+                            <li>Track your progress and earn achievements</li>
+                        </ol>
+                    </div>
+                </div>
+            </div>
         </div>
 
-        <!-- Celebration Animation -->
-        <div id="celebration" class="celebration hidden">
-            <div class="confetti"></div>
-        </div>
+        <div id="celebration" class="celebration hidden"></div>
     </div>
 
-    <!-- Scripts -->
-    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils/drawing_utils.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js"></script>
-    <script src="app.js"></script>
+    <script type="module" src="js/main.js"></script>
 </body>
 </html>

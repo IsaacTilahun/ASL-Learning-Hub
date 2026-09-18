@@ -1,0 +1,981 @@
+/* Reusable UI pieces: mode cards, video panel, lesson panel, modals. */
+
+/* Micro-label treatment, shared by everything the machine reports. */
+.subtitle,
+.status,
+.lesson-counter,
+.target-section h3,
+.confidence-meter label,
+.progress-card h4,
+.achievements h4,
+.troubleshooting-tips summary {
+    font-family: var(--font-label);
+    font-size: 0.625rem;
+    font-weight: 500;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+}
+
+/* Landing */
+.mode-selection {
+    display: flex;
+    flex-direction: column;
+    gap: 3.5rem;
+    animation: fadeIn 0.4s var(--ease);
+}
+
+.landing-hero {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    column-gap: 3rem;
+    max-width: 68rem;
+}
+
+.landing-hero .landing-eyebrow {
+    grid-column: 1 / -1;
+}
+
+.landing-hero .landing-headline,
+.landing-hero .landing-lede {
+    grid-column: 1;
+}
+
+.landing-section {
+    display: flex;
+    flex-direction: column;
+}
+
+.landing-eyebrow {
+    font-family: var(--font-label);
+    font-size: 0.5625rem;
+    font-weight: 500;
+    letter-spacing: 0.24em;
+    text-transform: uppercase;
+    color: var(--ash-dim);
+    margin-bottom: 1.25rem;
+}
+
+.landing-headline {
+    max-width: 22ch;
+    font-size: clamp(2.125rem, 5.2vw, 3.75rem);
+    font-weight: 700;
+    letter-spacing: -0.045em;
+    line-height: 1.02;
+    text-wrap: balance;
+}
+
+.landing-lede {
+    max-width: 52ch;
+    margin-top: 1.375rem;
+    font-size: 1rem;
+    color: var(--ash);
+}
+
+.landing-stat {
+    grid-column: 2;
+    grid-row: 2 / span 2;
+    align-self: end;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 0.4rem;
+    min-width: 9rem;
+    padding-top: 1rem;
+    border-top: 1px solid var(--hairline);
+}
+
+.landing-stat-label {
+    font-family: var(--font-label);
+    font-size: 0.625rem;
+    font-weight: 500;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--ash-dim);
+}
+
+.landing-stat-value {
+    font-family: var(--font-label);
+    font-size: clamp(1.75rem, 3vw, 2.75rem);
+    line-height: 1;
+    font-weight: 500;
+    font-variant-numeric: tabular-nums;
+    color: var(--bone);
+}
+
+.section-label {
+    font-family: var(--font-label);
+    font-size: 0.625rem;
+    font-weight: 500;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--ash-dim);
+    padding-bottom: 0.875rem;
+    border-bottom: 1px solid var(--hairline);
+}
+
+.section-note {
+    max-width: 48ch;
+    margin-top: 1rem;
+    font-size: 0.875rem;
+    color: var(--ash-dim);
+}
+
+/* Sign index: the whole curriculum at a glance, cleared signs marked. */
+.specimen {
+    display: flex;
+    flex-direction: column;
+    gap: 1.75rem;
+    margin-top: 1.5rem;
+}
+
+/* Lets the grid inside shrink instead of forcing the column wider. */
+.specimen-group {
+    min-width: 0;
+}
+
+.specimen-label {
+    font-family: var(--font-label);
+    font-size: 0.5625rem;
+    font-weight: 500;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--ash-dim);
+    margin-bottom: 0.75rem;
+}
+
+/* 13 columns puts the 26 letters on exactly two rows. */
+.specimen-grid {
+    display: grid;
+    grid-template-columns: repeat(13, 1fr);
+    gap: 0.5rem;
+}
+
+.specimen-cell {
+    position: relative;
+    aspect-ratio: 1;
+    display: grid;
+    place-items: center;
+    background: var(--surface);
+    border: 1px solid var(--hairline);
+    border-radius: var(--radius-sm);
+    font-family: var(--font-display);
+    font-size: clamp(1.25rem, 2.4vw, 2.125rem);
+    font-weight: 600;
+    letter-spacing: -0.02em;
+    color: var(--ash-dim);
+    cursor: pointer;
+    transition: color var(--transition), border-color var(--transition),
+                transform var(--transition);
+}
+
+.specimen-cell:hover {
+    color: var(--bone);
+    border-color: var(--hairline-strong);
+    transform: translateY(-2px);
+}
+
+.specimen-cell.learned {
+    color: var(--bone);
+    border-color: var(--hairline-strong);
+}
+
+.specimen-cell.learned::after {
+    content: '';
+    position: absolute;
+    bottom: 0.45rem;
+    width: 4px;
+    height: 4px;
+    border-radius: 50%;
+    background: var(--sage);
+}
+
+/* Two rows: practice modes on top, reference panels beneath. The split
+   mirrors what the buttons actually do. */
+.mode-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 1rem;
+    margin-top: 1.5rem;
+}
+
+.mode-icon {
+    filter: grayscale(1);
+    opacity: 0.9;
+}
+
+.mode-btn {
+    background: var(--surface);
+    border: 1px solid var(--hairline);
+    border-radius: var(--radius);
+    cursor: pointer;
+    text-align: left;
+    transition: border-color var(--transition), transform var(--transition),
+                background-color var(--transition);
+}
+
+.mode-btn:hover {
+    border-color: var(--hairline-strong);
+    transform: translateY(-2px);
+}
+
+/* Practice modes: the primary pair. */
+.mode-btn[data-mode] {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.5rem;
+    min-height: 200px;
+    padding: 1.75rem 1.5rem 1.5rem;
+}
+
+.mode-btn[data-mode] .mode-icon {
+    font-size: 1.5rem;
+    margin-bottom: auto;
+}
+
+.mode-btn[data-mode] .mode-title {
+    font-family: var(--font-display);
+    font-size: 1.375rem;
+    font-weight: 600;
+    letter-spacing: -0.025em;
+}
+
+.mode-btn[data-mode] .mode-desc {
+    font-size: 0.875rem;
+    color: var(--ash);
+}
+
+/* Reference panels: quieter, laid out as rows. */
+.mode-btn[data-action] {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 1rem 1.25rem;
+    background: transparent;
+}
+
+.mode-btn[data-action]:hover {
+    background: var(--surface);
+}
+
+.mode-btn[data-action] .mode-icon {
+    font-size: 0.9375rem;
+}
+
+.mode-btn[data-action] .mode-title {
+    font-size: 0.9375rem;
+    font-weight: 600;
+}
+
+.mode-btn[data-action] .mode-desc {
+    margin-left: auto;
+    font-family: var(--font-label);
+    font-size: 0.5625rem;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--ash-dim);
+}
+
+/* Video Section */
+.video-section {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.video-wrapper {
+    position: relative;
+    border-radius: var(--radius);
+    overflow: hidden;
+    background: var(--surface-sunk);
+    border: 1px solid var(--hairline);
+    aspect-ratio: 4 / 3;
+}
+
+.video-feed {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transform: scaleX(-1);
+}
+
+.hand-canvas {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    transform: scaleX(-1.3);
+}
+
+.video-overlay {
+    position: absolute;
+    top: 0.75rem;
+    left: 0.75rem;
+}
+
+.status {
+    --dot: var(--ash);
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.4rem 0.7rem;
+    border-radius: 2rem;
+    color: var(--bone);
+    background: rgba(12, 12, 11, 0.75);
+    border: 1px solid var(--hairline);
+    backdrop-filter: blur(8px);
+}
+
+.status::before {
+    content: '';
+    width: 5px;
+    height: 5px;
+    border-radius: 50%;
+    background: var(--dot);
+    flex-shrink: 0;
+}
+
+.status.listening {
+    --dot: var(--ochre);
+}
+
+.status.success {
+    --dot: var(--sage);
+}
+
+.status.error {
+    --dot: var(--clay);
+}
+
+.camera-controls {
+    display: flex;
+    gap: 0.5rem;
+}
+
+.control-btn {
+    flex: 1;
+    padding: 0.7rem 1rem;
+    font-size: 0.8125rem;
+    font-weight: 600;
+    background: var(--bone);
+    color: var(--ground);
+    border: 1px solid var(--bone);
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    transition: opacity var(--transition), background-color var(--transition),
+                border-color var(--transition), color var(--transition);
+}
+
+.control-btn:hover:not(:disabled) {
+    opacity: 0.88;
+}
+
+.control-btn:disabled {
+    opacity: 0.32;
+    cursor: not-allowed;
+}
+
+/* Armed, but not shouting about it. */
+.control-btn.record-btn {
+    background: transparent;
+    color: var(--ash);
+    border-color: var(--hairline);
+}
+
+.control-btn.record-btn:not(:disabled) {
+    color: var(--clay);
+    border-color: rgba(212, 105, 79, 0.45);
+}
+
+.control-btn.recording {
+    background: var(--clay);
+    border-color: var(--clay);
+    color: var(--ground);
+    animation: pulse 1.4s ease-in-out infinite;
+}
+
+/* Troubleshooting Tips */
+.troubleshooting-tips {
+    border-top: 1px solid var(--hairline);
+}
+
+.troubleshooting-tips details {
+    padding: 0.35rem 0;
+}
+
+.troubleshooting-tips summary {
+    color: var(--ash-dim);
+    list-style: none;
+    cursor: pointer;
+    user-select: none;
+    padding: 0.35rem 0;
+    transition: color var(--transition);
+}
+
+.troubleshooting-tips summary::-webkit-details-marker {
+    display: none;
+}
+
+.troubleshooting-tips summary:hover {
+    color: var(--ash);
+}
+
+.troubleshooting-tips ul {
+    list-style: none;
+    margin-top: 0.5rem;
+    columns: 2;
+    column-gap: 1.5rem;
+}
+
+.troubleshooting-tips li {
+    padding: 0.2rem 0;
+    color: var(--ash);
+    font-size: 0.8125rem;
+}
+
+/* Lesson Content */
+.lesson-content {
+    background: var(--surface);
+    border: 1px solid var(--hairline);
+    border-radius: var(--radius);
+    padding: 1.5rem;
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+}
+
+.lesson-header {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    padding-bottom: 1.25rem;
+    border-bottom: 1px solid var(--hairline);
+}
+
+.back-btn {
+    background: transparent;
+    border: 1px solid var(--hairline);
+    color: var(--ash);
+    padding: 0.4rem 0.7rem;
+    font-size: 0.8125rem;
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    transition: color var(--transition), border-color var(--transition);
+}
+
+.back-btn:hover {
+    color: var(--bone);
+    border-color: var(--hairline-strong);
+}
+
+.lesson-header h2 {
+    flex: 1;
+    text-align: center;
+    font-size: clamp(1.25rem, 2.2vw, 1.625rem);
+    font-weight: 700;
+    letter-spacing: -0.035em;
+}
+
+.lesson-counter {
+    color: var(--ash-dim);
+    font-variant-numeric: tabular-nums;
+    flex-shrink: 0;
+}
+
+/* Target Section */
+.target-section {
+    text-align: center;
+}
+
+.target-section h3 {
+    color: var(--ash-dim);
+    margin-bottom: 0.75rem;
+}
+
+.target-display {
+    background: var(--surface-sunk);
+    border: 1px solid var(--hairline);
+    border-radius: var(--radius);
+    padding: 1.25rem;
+}
+
+.sign-image {
+    line-height: 0;
+    margin-bottom: 1rem;
+}
+
+.sign-image img {
+    max-width: 100%;
+    max-height: 190px;
+    width: auto;
+    border-radius: var(--radius-sm);
+}
+
+.sign-emoji {
+    font-size: 4rem;
+    line-height: 1;
+}
+
+.sign-description p {
+    color: var(--bone);
+    font-size: 0.9375rem;
+    line-height: 1.45;
+}
+
+/* Hints read as a row of tags rather than a bulleted list. */
+.sign-description ul {
+    list-style: none;
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 0.35rem 0.4rem;
+    margin-top: 0.875rem;
+}
+
+.sign-description li {
+    font-family: var(--font-label);
+    font-size: 0.5625rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--ash);
+    border: 1px solid var(--hairline);
+    border-radius: 2rem;
+    padding: 0.3rem 0.6rem;
+}
+
+/* Feedback Section */
+.feedback-section {
+    display: flex;
+    flex-direction: column;
+    gap: 1.25rem;
+}
+
+.feedback-box {
+    background: var(--surface-sunk);
+    border: 1px solid var(--hairline);
+    border-left: 2px solid var(--hairline-strong);
+    border-radius: var(--radius-sm);
+    padding: 0.875rem 1rem;
+    min-height: 58px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    font-size: 0.9375rem;
+    line-height: 1.45;
+}
+
+.feedback-placeholder {
+    color: var(--ash-dim);
+    font-size: 0.875rem;
+}
+
+/* State variants come after .feedback-box so they win on equal specificity. */
+.feedback-success {
+    border-left-color: var(--sage);
+    color: var(--sage);
+    animation: slideIn 0.3s var(--ease);
+}
+
+.feedback-error {
+    border-left-color: var(--clay);
+    color: var(--clay);
+    animation: slideIn 0.3s var(--ease);
+}
+
+.feedback-warning {
+    border-left-color: var(--ochre);
+    color: var(--ochre);
+    animation: slideIn 0.3s var(--ease);
+}
+
+/* Confidence meter: the only live reading on the page, so it is built to look
+   like an instrument. Label and value head the track. */
+.confidence-meter {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    align-items: baseline;
+    gap: 0.5rem 1rem;
+}
+
+.confidence-meter label {
+    grid-area: 1 / 1;
+    color: var(--ash-dim);
+}
+
+#confidenceValue {
+    grid-area: 1 / 2;
+    font-family: var(--font-label);
+    font-size: 0.9375rem;
+    font-weight: 500;
+    font-variant-numeric: tabular-nums;
+    color: var(--bone);
+}
+
+.confidence-bar {
+    grid-area: 2 / 1 / 3 / 3;
+    height: 10px;
+    background: var(--surface-sunk);
+    border: 1px solid var(--hairline);
+    border-radius: 2px;
+    overflow: hidden;
+}
+
+/* The mask cuts the fill into fixed-pitch ticks, so the reading quantises as
+   it climbs instead of sliding as one smooth bar. */
+.confidence-fill {
+    height: 100%;
+    width: 0%;
+    background: var(--ash);
+    transition: width 0.12s linear, background-color 0.3s ease;
+    -webkit-mask-image: repeating-linear-gradient(90deg, #000 0 6px, transparent 6px 9px);
+    mask-image: repeating-linear-gradient(90deg, #000 0 6px, transparent 6px 9px);
+    -webkit-mask-size: 9px 100%;
+    mask-size: 9px 100%;
+}
+
+.confidence-fill.good {
+    background: var(--sage);
+}
+
+.confidence-fill.fair {
+    background: var(--ochre);
+}
+
+.confidence-fill.poor {
+    background: var(--clay);
+}
+
+/* Action Buttons */
+.lesson-actions {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.5rem;
+}
+
+.action-btn {
+    padding: 0.75rem 1.25rem;
+    font-size: 0.875rem;
+    font-weight: 600;
+    border: 1px solid transparent;
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    transition: opacity var(--transition), color var(--transition),
+                border-color var(--transition);
+}
+
+.action-btn.primary {
+    background: var(--bone);
+    color: var(--ground);
+}
+
+.action-btn.primary:hover:not(:disabled) {
+    opacity: 0.88;
+}
+
+.action-btn.primary:disabled {
+    opacity: 0.32;
+    cursor: not-allowed;
+}
+
+.action-btn.secondary {
+    background: transparent;
+    border-color: var(--hairline);
+    color: var(--ash);
+}
+
+.action-btn.secondary:hover {
+    color: var(--bone);
+    border-color: var(--hairline-strong);
+}
+
+/* Progress Bar */
+.progress-bar-section {
+    padding-top: 1.25rem;
+    border-top: 1px solid var(--hairline);
+}
+
+.progress-bar {
+    height: 3px;
+    background: var(--hairline);
+    border-radius: 2px;
+    overflow: hidden;
+}
+
+.progress-fill {
+    height: 100%;
+    width: 0%;
+    background: var(--bone);
+    transition: width 0.4s var(--ease);
+}
+
+/* Modal */
+.modal {
+    position: fixed;
+    inset: 0;
+    background: rgba(8, 8, 7, 0.78);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 1.5rem;
+    z-index: 1000;
+    backdrop-filter: blur(6px);
+    animation: fadeIn 0.2s var(--ease);
+}
+
+.modal.hidden {
+    display: none;
+}
+
+.modal-content {
+    background: var(--surface);
+    border: 1px solid var(--hairline);
+    border-radius: var(--radius);
+    padding: 2rem;
+    width: 100%;
+    max-width: 620px;
+    max-height: 85vh;
+    overflow-y: auto;
+    position: relative;
+    animation: slideUp 0.28s var(--ease);
+}
+
+.close-btn {
+    position: absolute;
+    top: 1.25rem;
+    right: 1.25rem;
+    width: 1.75rem;
+    height: 1.75rem;
+    display: grid;
+    place-items: center;
+    background: transparent;
+    border: 1px solid var(--hairline);
+    border-radius: 50%;
+    color: var(--ash);
+    font-size: 1rem;
+    line-height: 1;
+    cursor: pointer;
+    transition: color var(--transition), border-color var(--transition);
+}
+
+.close-btn:hover {
+    color: var(--bone);
+    border-color: var(--hairline-strong);
+}
+
+.modal-content h2 {
+    font-size: 1.5rem;
+    font-weight: 700;
+    letter-spacing: -0.03em;
+    padding-right: 2.5rem;
+    padding-bottom: 1.25rem;
+    margin-bottom: 1.5rem;
+    border-bottom: 1px solid var(--hairline);
+}
+
+.progress-message {
+    margin-bottom: 1.75rem;
+    color: var(--ash);
+    font-size: 0.9375rem;
+    line-height: 1.5;
+}
+
+/* Progress Stats */
+.progress-stats {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+}
+
+.progress-card {
+    text-align: center;
+    padding: 1.5rem 1.25rem;
+    background: var(--surface-sunk);
+    border: 1px solid var(--hairline);
+    border-radius: var(--radius);
+}
+
+.progress-card h4 {
+    color: var(--ash-dim);
+    margin-bottom: 0.5rem;
+}
+
+/* Ring driven by --progress-angle, set per card when the modal renders. */
+.progress-circle {
+    width: 124px;
+    height: 124px;
+    border-radius: 50%;
+    background: conic-gradient(
+        var(--bone) 0 var(--progress-angle, 0deg),
+        var(--hairline) var(--progress-angle, 0deg) 360deg
+    );
+    display: grid;
+    place-items: center;
+    position: relative;
+    margin: 1rem auto;
+}
+
+.progress-circle::before {
+    content: '';
+    position: absolute;
+    inset: 5px;
+    border-radius: 50%;
+    background: var(--surface-sunk);
+}
+
+.circle-text {
+    position: relative;
+    font-family: var(--font-label);
+    font-size: 1.25rem;
+    font-weight: 500;
+    font-variant-numeric: tabular-nums;
+    color: var(--bone);
+}
+
+.progress-card p {
+    color: var(--ash);
+    font-size: 0.8125rem;
+}
+
+.completed-list {
+    display: block;
+    margin-top: 0.4rem;
+    font-family: var(--font-label);
+    font-size: 0.5625rem;
+    letter-spacing: 0.1em;
+    line-height: 1.7;
+    color: var(--ash-dim);
+    word-break: break-word;
+}
+
+/* Achievements */
+.achievements {
+    padding-top: 1.5rem;
+    border-top: 1px solid var(--hairline);
+}
+
+.achievements h4 {
+    color: var(--ash-dim);
+    margin-bottom: 0.5rem;
+}
+
+.achievements-list {
+    display: grid;
+    grid-template-columns: 1fr;
+}
+
+.achievement {
+    padding: 0.7rem 0;
+    font-size: 0.875rem;
+    color: var(--bone);
+    border-bottom: 1px solid var(--hairline);
+}
+
+.achievement:last-child {
+    border-bottom: none;
+}
+
+.achievement.unlocked {
+    animation: popIn 0.4s var(--ease);
+}
+
+.achievements-empty {
+    padding: 0.7rem 0;
+    color: var(--ash-dim);
+    font-size: 0.875rem;
+}
+
+/* Celebration */
+.celebration {
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    z-index: 999;
+}
+
+.celebration.hidden {
+    display: none;
+}
+
+.confetti {
+    position: absolute;
+    top: -8vh;
+    width: var(--size, 7px);
+    height: calc(var(--size, 7px) * var(--ratio, 1));
+    animation: confetti-drop var(--dur, 2.2s) cubic-bezier(0.32, 0.46, 0.64, 1)
+               var(--delay, 0s) forwards;
+}
+
+.confetti::before {
+    content: '';
+    display: block;
+    width: 100%;
+    height: 100%;
+    background: var(--tint, var(--bone));
+    border-radius: var(--round, 1px);
+    animation: confetti-flutter calc(var(--dur, 2.2s) / 3.2) ease-in-out
+               var(--delay, 0s) infinite alternate;
+}
+
+/* Scrollbar Styling */
+.lesson-content::-webkit-scrollbar,
+.modal-content::-webkit-scrollbar {
+    width: 6px;
+}
+
+.lesson-content::-webkit-scrollbar-track,
+.modal-content::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.lesson-content::-webkit-scrollbar-thumb,
+.modal-content::-webkit-scrollbar-thumb {
+    background: var(--hairline-strong);
+    border-radius: 3px;
+}
+
+.lesson-content::-webkit-scrollbar-thumb:hover,
+.modal-content::-webkit-scrollbar-thumb:hover {
+    background: var(--ash-dim);
+}
+
+/* About Modal */
+.about-body {
+    line-height: 1.7;
+    color: var(--ash);
+}
+
+.about-body h3 {
+    margin: 1.75rem 0 0.6rem;
+    color: var(--bone);
+    font-family: var(--font-label);
+    font-size: 0.625rem;
+    font-weight: 500;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+}
+
+.about-body h3:first-child {
+    margin-top: 0;
+}
+
+.about-body p {
+    font-size: 0.9375rem;
+}
+
+.about-body ul,
+.about-body ol {
+    margin: 0 0 0 1.1rem;
+    font-size: 0.9375rem;
+}
+
+.about-body li {
+    padding: 0.15rem 0;
+}
+
+.about-body strong {
+    color: var(--bone);
+    font-weight: 600;
+}

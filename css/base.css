@@ -1,0 +1,96 @@
+/* Reset, design tokens and the page background. */
+
+*,
+*::before,
+*::after {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+:root {
+    /* Warm graphite ground. The camera feed is the only saturated colour on
+       the page, so the interface around it stays tonal. */
+    --ground: #111110;
+    --surface: #191917;
+    --surface-sunk: #0c0c0b;
+    --hairline: #2c2b27;
+    --hairline-strong: #46443d;
+
+    --bone: #edeae2;
+    --ash: #9b978c;
+    --ash-dim: #6b685f;
+
+    /* Muted state colours: readable against graphite without reading neon. */
+    --sage: #9dbe7a;
+    --ochre: #d9a34e;
+    --clay: #d4694f;
+
+    --font-display: 'Bricolage Grotesque', 'Trebuchet MS', sans-serif;
+    --font-body: 'Hanken Grotesk', 'Segoe UI', system-ui, sans-serif;
+    /* Small tracked caps for labels/data — the body face carries it, no
+       separate monospace family. */
+    --font-label: var(--font-body);
+
+    --radius: 10px;
+    --radius-sm: 6px;
+    --ease: cubic-bezier(0.32, 0.72, 0, 1);
+    --transition: 180ms var(--ease);
+}
+
+body {
+    font-family: var(--font-body);
+    font-size: 0.9375rem;
+    line-height: 1.6;
+    color: var(--bone);
+    background-color: var(--ground);
+    background-image:
+        radial-gradient(120% 80% at 50% -10%, rgba(237, 234, 226, 0.05), transparent 60%);
+    background-repeat: no-repeat;
+    min-height: 100vh;
+    overflow-x: hidden;
+    position: relative;
+    -webkit-font-smoothing: antialiased;
+}
+
+/* Fine static grain, for a photographic rather than digital surface. */
+body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    z-index: 0;
+    opacity: 0.04;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='g'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='180' height='180' filter='url(%23g)'/%3E%3C/svg%3E");
+}
+
+body > * {
+    position: relative;
+    z-index: 1;
+}
+
+h1,
+h2,
+h3,
+h4 {
+    font-family: var(--font-display);
+    font-weight: 600;
+    letter-spacing: -0.02em;
+    line-height: 1.15;
+}
+
+button {
+    font: inherit;
+    color: inherit;
+}
+
+:focus-visible {
+    outline: 2px solid var(--bone);
+    outline-offset: 2px;
+    border-radius: 3px;
+}
+
+::selection {
+    background: var(--bone);
+    color: var(--ground);
+}

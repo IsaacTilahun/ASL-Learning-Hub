@@ -1,0 +1,30 @@
+// ASL alphabet reference data. `label` matches the filename in images/ and the
+// key in signPatterns.js.
+export const ALPHABET_SIGNS = [
+  { label: 'A', description: 'Make a fist with thumb pointing to the side', hints: ['Form tight fist', 'Thumb on side', 'Hold steady'] },
+  { label: 'B', description: 'Open hand with fingers together', hints: ['Straight fingers', 'Palm out', 'Thumb inside'] },
+  { label: 'C', description: 'Curve fingers like C shape', hints: ['Curve position', 'Thumb relaxed', 'Show clearly'] },
+  { label: 'D', description: 'Index finger up, others curled', hints: ['Point up', 'Curl others', 'Thumb touches'] },
+  { label: 'E', description: 'All fingers curved', hints: ['Gentle curve', 'Face level', 'Relaxed'] },
+  { label: 'F', description: 'Thumb and index circle', hints: ['Circle tight', 'Fingers up', 'Keep steady'] },
+  { label: 'G', description: 'Index and middle sideways', hints: ['Point side', 'Others down', 'Keep still'] },
+  { label: 'H', description: 'Two fingers sideways', hints: ['Both side', 'Others down', 'Similar to G'] },
+  { label: 'I', description: 'Pinky pointing up', hints: ['Pinky up', 'Curl others', 'Keep vertical'] },
+  { label: 'J', description: 'Pinky up then hook down', hints: ['Start up', 'Hook motion', 'Show J shape'] },
+  { label: 'K', description: 'Make V with index and middle', hints: ['V shape', 'Others down', 'Thumb up'] },
+  { label: 'L', description: 'Thumb and index L shape', hints: ['Thumb up', 'Index side', 'Others curled'] },
+  { label: 'M', description: 'Three fingers down', hints: ['Three down', 'Thumb out', 'Hold straight'] },
+  { label: 'N', description: 'Two fingers down', hints: ['Two down', 'Thumb out', 'Like M'] },
+  { label: 'O', description: 'Circle with all fingers', hints: ['All together', 'Circle tight', 'In front'] },
+  { label: 'P', description: 'Like K but hand down', hints: ['V shape', 'Hand down', 'Others curled'] },
+  { label: 'Q', description: 'P with downward motion', hints: ['P shape', 'Move down', 'Show motion'] },
+  { label: 'R', description: 'Index and middle crossed', hints: ['Cross them', 'Others curled', 'Palm out'] },
+  { label: 'S', description: 'Fist like A', hints: ['Tight fist', 'Thumb out', 'Hold steady'] },
+  { label: 'T', description: 'T shape with thumb', hints: ['Thumb between', 'Make T', 'Keep still'] },
+  { label: 'U', description: 'Two fingers up together', hints: ['Two up', 'Others curled', 'Palm in'] },
+  { label: 'V', description: 'V shape with fingers', hints: ['Make V', 'Others curled', 'Palm out'] },
+  { label: 'W', description: 'Three fingers pointing up', hints: ['Three up', 'Ring middle', 'Together'] },
+  { label: 'X', description: 'Cross index fingers', hints: ['Cross them', 'Others curled', 'Tight'] },
+  { label: 'Y', description: 'Thumb and pinky extended', hints: ['Thumb pinky', 'Others curled', 'Show Y'] },
+  { label: 'Z', description: 'Z motion with index', hints: ['Trace Z', 'Index finger', 'Clear motion'] }
+];
